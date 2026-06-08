@@ -1,4 +1,4 @@
-import { Canvas, Color, Rect, type TBBox } from "fabric";
+import { Canvas, Color, Rect, util, type TBBox } from "fabric";
 
 type DrawOptions = {
     isHorizontal: boolean;
@@ -151,7 +151,18 @@ export default class CanvasRuler {
             i += gap
         ) {
             const position = (startOffset + i) * zoom;
-            const textValue = String(startValue + i);
+            // const textValue = String(startValue + i);
+            const pxPerMM =
+                util.parseUnit("1mm");
+
+            const mmValue =
+                Math.round(
+                    (startValue + i) /
+                    pxPerMM
+                );
+
+            const textValue =
+                String(mmValue);
 
             const textLength = (10 * textValue.length) / 4;
 
@@ -214,7 +225,18 @@ export default class CanvasRuler {
         const ruleSize = this.option.ruleSize;
         const fontSize = this.option.fontSize;
 
-        const roundFactor = (x: number) => String(Math.round(x));
+        // const roundFactor = (x: number) => String(Math.round(x));
+        const pxPerMM =
+            util.parseUnit("1mm");
+
+        const roundFactor = (
+            x: number
+        ) =>
+            String(
+                Math.round(
+                    x / pxPerMM
+                )
+            );
 
         const leftValue = roundFactor(
             isHorizontal
