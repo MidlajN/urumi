@@ -175,7 +175,7 @@ export default class CanvasGrid {
         ctx.beginPath();
 
         ctx.strokeStyle =
-            "rgba(0,0,0,0.03)";
+            "#f2f2f2";
 
         /**
          * Keep thickness stable
@@ -217,7 +217,7 @@ export default class CanvasGrid {
         ctx.beginPath();
 
         ctx.strokeStyle =
-            "rgba(0,0,0,0.06)";
+            "#e5e5e5";
 
         for (
             let x = left;

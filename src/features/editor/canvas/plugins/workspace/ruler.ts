@@ -407,7 +407,7 @@ export default class CanvasRuler {
             ctx.translate(-left, -top);
         }
 
-        ctx.fillText(text, left, top);
+        ctx.fillText(`${text}`, left, top);
 
         ctx.restore();
     }
