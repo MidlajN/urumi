@@ -1,8 +1,11 @@
 /* eslint-disable react/prop-types */
 
+import type { SVGProps } from "react";
+import type { JSX } from "react/jsx-runtime";
+
 
 // ------------ Logo ------------
-export const PlotLogo = (props) => (
+export const PlotLogo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={100}
     height={30}
@@ -78,7 +81,7 @@ export const PlotLogo = (props) => (
 
 
 // ------------ Icons for the SideBar ---------------
-export const SelectIcon = (props) => (
+export const SelectIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -95,7 +98,7 @@ export const SelectIcon = (props) => (
   </svg>
 );
 
-export const PencilIcon = (props) => (
+export const PencilIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -113,7 +116,7 @@ export const PencilIcon = (props) => (
   </svg>
 );
 
-export const TriangleIcon = (props) => (
+export const TriangleIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -130,7 +133,7 @@ export const TriangleIcon = (props) => (
   </svg>
 );
 
-export const PenIcon= (props) => ( 
+export const PenIcon= (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => ( 
   <svg
     width={33}
     height={32}
@@ -148,7 +151,7 @@ export const PenIcon= (props) => (
   </svg>
 );
 
-export const Line = (props) => (
+export const Line = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -161,7 +164,7 @@ export const Line = (props) => (
   </svg>
 );
 
-export const RectIcon = (props) => (
+export const RectIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -174,7 +177,7 @@ export const RectIcon = (props) => (
   </svg>
 )
 
-export const CircleIcon = (props) => (
+export const CircleIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -187,7 +190,7 @@ export const CircleIcon = (props) => (
   </svg>
 )
 
-export const TextIcon = (props) => (
+export const TextIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -204,7 +207,7 @@ export const TextIcon = (props) => (
   </svg>
 )
 
-export const GroupIcon = (props) => (
+export const GroupIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={33}
     height={32}
@@ -241,7 +244,7 @@ export const GroupIcon = (props) => (
   </svg>
 )
 
-export const UngroupIcon = (props) => (
+export const UngroupIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width={32}
     height={33}
@@ -258,7 +261,7 @@ export const UngroupIcon = (props) => (
 )
 
 // Tob Bar Icons
-export const ImportIcon = (props) => (
+export const ImportIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -277,7 +280,7 @@ export const ImportIcon = (props) => (
   </svg>
 );
 
-export const HorizontalRect = (props) => (
+export const HorizontalRect = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -294,7 +297,7 @@ export const HorizontalRect = (props) => (
   </svg>
 );
 
-export const VerticalRect = (props) => (
+export const VerticalRect = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -311,7 +314,24 @@ export const VerticalRect = (props) => (
   </svg>
 );
 
-export const ShrinkIcon = (props) => (
+export const TextCursorIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
+    <svg
+    fill="#000000"
+    width="20px"
+    height="20px"
+    viewBox="0 0 14 14"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path d="m 7.430568,2.63427 0,5.65744 1.363008,0 0,0.86113 -1.363008,0 0,2.21289 c 0,0.75143 1.209266,0.77313 1.34722,0.77313 l 0,0.86114 C 8.54907,13 7.961488,12.9724 7.448021,12.71726 7.274071,12.63076 7.124348,12.52551 7,12.40421 6.875709,12.52551 6.725986,12.63086 6.552037,12.71726 6.038512,12.97244 5.450987,13 5.222212,13 l 0,-0.86114 c 0.137896,0 1.347219,-0.0217 1.347219,-0.77313 l 0,-2.21289 -1.363007,0 0,-0.86113 1.363007,0 0,-5.65744 c 0,-0.75143 -1.209323,-0.77313 -1.347219,-0.77313 L 5.222212,1 C 5.450987,1 6.038512,1.02756 6.551979,1.282683 6.725986,1.369143 6.875709,1.474429 7,1.59579 7.124291,1.474486 7.274014,1.369141 7.448021,1.282683 7.961488,1.027556 8.549013,1 8.777731,1 l 0,0.86114 c -0.137897,0 -1.347163,0.0217 -1.347163,0.77313 z" />
+  </svg>
+);
+
+
+export const ShrinkIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -331,7 +351,7 @@ export const ShrinkIcon = (props) => (
   </svg>
 );
 
-export const ZoomIn = (props) => (
+export const ZoomIn = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -352,7 +372,7 @@ export const ZoomIn = (props) => (
   </svg>
 );
 
-export const ZoomOut = (props) => (
+export const ZoomOut = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -373,7 +393,7 @@ export const ZoomOut = (props) => (
 );
 
 
-export const DragHandIcon = (props) => (
+export const DragHandIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -394,7 +414,7 @@ export const DragHandIcon = (props) => (
   </svg>
 );
 
-export const ResetIcon = (props) => (
+export const ResetIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     width="10.583332mm"
     height="10.55338mm"
@@ -415,7 +435,7 @@ export const ResetIcon = (props) => (
   </svg>
 );
 
-export const WarningIcon = (props) => (
+export const WarningIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}
@@ -435,7 +455,7 @@ export const WarningIcon = (props) => (
   </svg>
 )
 
-export const DragIcon = (props) => (
+export const DragIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={24}

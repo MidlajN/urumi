@@ -16,6 +16,8 @@ export const setFabricDefaults = (): void => {
   FabricObject.ownDefaults.cornerStrokeColor = '#0E98FC';
   FabricObject.ownDefaults.borderColor = '#43cad4'
   FabricObject.customProperties = ['name'];
+
+  FabricObject.ownDefaults.originY
 };
 
 export const preloadAllIcons = async (): Promise<void> => {

@@ -19,6 +19,7 @@ import { ViewportController } from "./modules/ViewportController";
 import { EditorActions } from "./modules/EditorActions";
 import { HistoryManager } from "./modules/HistoryManager";
 
+
 // ---------------------------------------
 type CanvasConfig = {
     width: number;
@@ -122,7 +123,7 @@ export class Workspace {
             this.history
         )
 
-        this.initObjectBorder()
+        this.initObjectBorder();
     }
 
     initCanvas(): void {

@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DragIcon, ResetIcon, ZoomIn, ZoomOut } from "@/features/editor/components/Icons"
 import { motion } from 'framer-motion'
 import { useCanvas } from '../hooks/useCanvas'
+import { useEditorSetup } from '../hooks/useEditorSetup'
 
 
 export default function EditorCanvas() {
 
-    const { containerRef, canvasRef } = useCanvas()
+    const { containerRef, canvasRef, canvas, workspace } = useCanvas()
 
+    useEditorSetup({
+        canvas,
+        workspace
+    })
 
     return (
         <div
@@ -19,6 +24,7 @@ export default function EditorCanvas() {
         </div>
     )
 }
+
 
 /* eslint-disable react/prop-types */
 const BottomNav = () => {
@@ -86,7 +92,7 @@ const BottomNav = () => {
                             workspace.zoomOut();
                         }}
                     >
-                        <ZoomOut th={16} height={16} />
+                        <ZoomOut width={16} height={16} />
                     </motion.button>
                     <motion.button
                         className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681] rounded-e-xl" 
