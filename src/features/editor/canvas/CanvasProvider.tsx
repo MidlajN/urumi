@@ -3,7 +3,10 @@ import {
     useContext,
     useEffect,
     useRef,
-    useState
+    useState,
+    type Dispatch,
+    type RefObject,
+    type SetStateAction
 } from "react";
 
 import {
@@ -17,10 +20,41 @@ import { Workspace } from "./plugins/workspace/Workspace";
 import CanvasRuler from "./plugins/workspace/ruler";
 import CanvasGrid from "./plugins/workspace/Grid";
 
-export const CanvasContext = createContext(null);
+
+
+type CanvasConfig = {
+    width: number;
+    height: number;
+    orientation: "vertical" | "horizontal";
+    maxWidth: number;
+    maxHeight: number;
+};
+
+type CanvasContextType = {
+    canvas: Canvas | null;
+    canvasRef: RefObject<HTMLCanvasElement | null>;
+    containerRef: RefObject<HTMLDivElement | null>;
+    toolRef: RefObject<string>;
+    workspace: Workspace | null;
+    canvasConfig: CanvasConfig;
+    setCanvasConfig: Dispatch<
+        SetStateAction<CanvasConfig>
+    >;
+};
+
+export const CanvasContext = createContext<CanvasContextType | null>(null);
 
 export const useCanvas = () => {
-    return useContext(CanvasContext);
+    const context =
+        useContext(CanvasContext);
+
+    if (!context) {
+        throw new Error(
+            "useCanvas must be used inside CanvasProvider"
+        );
+    }
+
+    return context;
 };
 
 export function CanvasProvider({
@@ -35,14 +69,14 @@ export function CanvasProvider({
 
     const toolRef = useRef("Select");
 
-    const workspaceRef = useRef<Workspace | null>(null);
+    const [workspace, setWorkspace] = useState<Workspace | null>(null);
 
     const [canvas, setCanvas] = useState<Canvas | null>(null);
 
-    const [canvasConfig, setCanvasConfig] = useState({
-        width: 700,
-        height: 1000,
-        orientation: "vertical" as const,
+    const [canvasConfig, setCanvasConfig] = useState<CanvasConfig>({
+        width: 1000,
+        height: 700,
+        orientation: "vertical",
         maxWidth: 700,
         maxHeight: 1000
     });
@@ -59,7 +93,7 @@ export function CanvasProvider({
         }
         const cleanupPromise = initCanvas()
 
-        const workspace = new Workspace(
+        const workspaceInstance = new Workspace(
             canvasRef,
             canvasConfig,
             setCanvasConfig,
@@ -67,11 +101,11 @@ export function CanvasProvider({
             toolRef
         );
 
-        workspaceRef.current = workspace;
+        setWorkspace(workspaceInstance)
 
-        const fabricCanvas = workspace.getCanvas();
+        const fabricCanvas = workspaceInstance.getCanvas();
 
-        const workspaceRect = workspace.getWorkspace();
+        const workspaceRect = workspaceInstance.getWorkspace();
 
         const grid = new CanvasGrid(
             fabricCanvas,
@@ -93,8 +127,9 @@ export function CanvasProvider({
         // const parsedCanvas = JSON.parse(savedCanvas);
 
         return () => {
-            workspaceRef.current?.destroy();
+            workspaceInstance?.destroy();
         };
+
     }, []);
 
     return (
@@ -104,8 +139,7 @@ export function CanvasProvider({
                 canvasRef,
                 containerRef,
                 toolRef,
-                workspace:
-                    workspaceRef.current,
+                workspace,
                 canvasConfig,
                 setCanvasConfig
             }}

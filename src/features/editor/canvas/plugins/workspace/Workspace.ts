@@ -1085,6 +1085,10 @@ export class Workspace {
         return this.workspace;
     }
 
+    getDragMode(): boolean {
+        return this.dragMode;
+    }
+
     // Event Listener
     on(
         event: string, 
