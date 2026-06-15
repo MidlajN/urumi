@@ -1,41 +1,62 @@
-import { Canvas, Rect, util } from "fabric";
+import {
+    Canvas,
+    Rect,
+    Pattern,
+    util
+} from "fabric";
 
 export default class CanvasGrid {
-    private eventHandler: {
-        renderGrid: () => void;
-    };
+    private canvas:
+        Canvas;
+
+    private workspace:
+        Rect;
+
+    private zoomHandler:
+        () => void;
 
     constructor(
-        private canvas: Canvas,
-        private workspace: Rect
+        canvas: Canvas,
+        workspace: Rect
     ) {
-        this.eventHandler = {
-            renderGrid: this.renderGrid
-        };
+        this.canvas =
+            canvas;
+
+        this.workspace =
+            workspace;
+
+        this.zoomHandler =
+            this.updateGrid;
     }
 
     enable(): void {
-        this.canvas.on(
-            "after:render",
-            this.eventHandler.renderGrid
-        );
+        this.updateGrid();
 
-        this.canvas.renderAll();
+        this.canvas.on(
+            "mouse:wheel",
+            this.zoomHandler
+        );
     }
 
     destroy(): void {
         this.canvas.off(
-            "after:render",
-            this.eventHandler.renderGrid
+            "mouse:wheel",
+            this.zoomHandler
         );
     }
 
-    private getGridSpacing(): {
-        minor: number;
-        major: number;
-    } {
+    private getGridSpacing():
+        {
+            minor:
+                number;
+
+            major:
+                number;
+        } {
+
         const zoom =
-            this.canvas.getZoom();
+            this.canvas
+                .getZoom();
 
         if (zoom < 0.08) {
             return {
@@ -78,87 +99,12 @@ export default class CanvasGrid {
         };
     }
 
-    private renderGrid = (): void => {
-        const ctx =
-            this.canvas.getContext();
+    private updateGrid =
+        (): void => {
 
-        const vpt =
-            this.canvas.viewportTransform;
-
-        if (!ctx || !vpt) return;
-
-        ctx.save();
-
-        /**
-         * Preserve retina transform.
-         */
-        const t =
-            ctx.getTransform();
-
-        /**
-         * Multiply DPR transform
-         * by viewport transform.
-         */
-        ctx.setTransform(
-            t.a * vpt[0],
-            vpt[1],
-            vpt[2],
-            t.d * vpt[3],
-            t.e + vpt[4] * t.a,
-            t.f + vpt[5] * t.d
-        );
-
-        /**
-         * Workspace scene coords
-         */
-        const left =
-            this.workspace.left ?? 0;
-
-        const top =
-            this.workspace.top ?? 0;
-
-        const width =
-            (this.workspace.width ?? 0) *
-            (this.workspace.scaleX ?? 1);
-
-        const height =
-            (this.workspace.height ?? 0) *
-            (this.workspace.scaleY ?? 1);
-
-        /**
-         * Clip to workspace
-         */
-        ctx.beginPath();
-
-        ctx.rect(
-            left,
-            top,
-            width,
-            height
-        );
-
-        ctx.clip();
-
-        this.drawGrid(
-            ctx,
-            left,
-            top,
-            width,
-            height
-        );
-
-        ctx.restore();
-    };
-
-    private drawGrid(
-        ctx: CanvasRenderingContext2D,
-        left: number,
-        top: number,
-        width: number,
-        height: number
-    ): void {
         const spacing =
-            this.getGridSpacing();
+            this
+                .getGridSpacing();
 
         const minorSpacing =
             util.parseUnit(
@@ -169,42 +115,100 @@ export default class CanvasGrid {
             util.parseUnit(
                 `${spacing.major}mm`
             );
+
         /**
-         * Minor grid
+         * tile size
+         */
+        const tileSize =
+            majorSpacing;
+
+        const patternCanvas =
+            document.createElement(
+                "canvas"
+            );
+
+        patternCanvas.width =
+            Math.ceil(
+                tileSize
+            );
+
+        patternCanvas.height =
+            Math.ceil(
+                tileSize
+            );
+
+        const ctx =
+            patternCanvas
+                .getContext(
+                    "2d"
+                );
+
+        if (!ctx) {
+            return;
+        }
+
+        /**
+         * white background
+         */
+        ctx.fillStyle =
+            "#ffffff";
+
+        ctx.fillRect(
+            0,
+            0,
+            tileSize,
+            tileSize
+        );
+
+        /**
+         * stable stroke
+         */
+        const zoom =
+            this.canvas
+                .getZoom();
+
+        ctx.lineWidth =
+            Math.max(
+                1 / zoom,
+                0.5
+            );
+
+        /**
+         * minor grid
          */
         ctx.beginPath();
 
         ctx.strokeStyle =
             "#f2f2f2";
 
-        /**
-         * Keep thickness stable
-         */
-        ctx.lineWidth =
-            1 / this.canvas.getZoom();
-
         for (
-            let x = left;
-            x <= left + width;
+            let x = 0;
+            x <= tileSize;
             x += minorSpacing
         ) {
-            ctx.moveTo(x, top);
+            ctx.moveTo(
+                x,
+                0
+            );
 
             ctx.lineTo(
                 x,
-                top + height
+                tileSize
             );
         }
 
         for (
-            let y = top;
-            y <= top + height;
+            let y = 0;
+            y <= tileSize;
             y += minorSpacing
         ) {
-            ctx.moveTo(left, y);
+            ctx.moveTo(
+                0,
+                y
+            );
 
             ctx.lineTo(
-                left + width,
+                tileSize,
                 y
             );
         }
@@ -212,39 +216,46 @@ export default class CanvasGrid {
         ctx.stroke();
 
         /**
-         * Major grid
+         * major grid
          */
         ctx.beginPath();
 
         ctx.strokeStyle =
             "#e5e5e5";
 
-        for (
-            let x = left;
-            x <= left + width;
-            x += majorSpacing
-        ) {
-            ctx.moveTo(x, top);
+        ctx.moveTo(
+            0,
+            0
+        );
 
-            ctx.lineTo(
-                x,
-                top + height
-            );
-        }
+        ctx.lineTo(
+            tileSize,
+            0
+        );
 
-        for (
-            let y = top;
-            y <= top + height;
-            y += majorSpacing
-        ) {
-            ctx.moveTo(left, y);
+        ctx.moveTo(
+            0,
+            0
+        );
 
-            ctx.lineTo(
-                left + width,
-                y
-            );
-        }
+        ctx.lineTo(
+            0,
+            tileSize
+        );
 
         ctx.stroke();
-    }
+
+        this.workspace.set(
+            "fill",
+            new Pattern({
+                source:
+                    patternCanvas,
+
+                repeat:
+                    "repeat"
+            })
+        );
+
+        this.canvas.renderAll();
+    };
 }

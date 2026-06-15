@@ -16,7 +16,7 @@ import {
 } from "./plugins/controls/controls";
 
 import type { Canvas } from "fabric";
-import { Workspace } from "./plugins/workspace/Workspace";
+import { Workspace } from "./engine/Workspace";
 import CanvasRuler from "./plugins/workspace/ruler";
 import CanvasGrid from "./plugins/workspace/Grid";
 
