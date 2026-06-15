@@ -1,4 +1,8 @@
-import { useEffect, useRef } from "react";
+import {
+    useEffect,
+    useRef,
+    type RefObject
+} from "react";
 
 import {
     Line,
@@ -6,14 +10,18 @@ import {
     Rect,
     Ellipse,
     Triangle,
+    Polygon,
     IText,
-    Canvas
+    Canvas,
+    type FabricObject,
+    Point
 } from "fabric";
+import {
+    Pentagon as PentagonIcon
+} from "lucide-react";
 
 import FontFaceObserver from "fontfaceobserver";
 import ReactDOMServer from "react-dom/server";
-
-import { Workspace } from "../canvas/engine/Workspace";
 
 import { useEditorStore } from "../store/editor.store";
 
@@ -28,12 +36,12 @@ import {
 
 type Props = {
     canvas: Canvas | null;
-    workspace: Workspace | null;
+    toolRef: RefObject<string>;
 };
 
 export const useEditorSetup = ({
     canvas,
-    workspace
+    toolRef
 }: Props) => {
 
     const {
@@ -41,11 +49,11 @@ export const useEditorSetup = ({
         selectedShape,
         strokeColor,
         fontFamily,
+        fontSize,
         setTool
     } = useEditorStore();
 
-    const fontRef =
-        useRef(fontFamily);
+    const fontRef = useRef(fontFamily);
 
     useEffect(() => {
         fontRef.current =
@@ -86,8 +94,82 @@ export const useEditorSetup = ({
 
     useEffect(() => {
 
-        if (!canvas || !workspace)
+        if (!canvas)
             return;
+
+        toolRef.current =
+            activeTool ===
+            "select"
+                ? "Select"
+                : activeTool ===
+                  "pen"
+                ? "Pen"
+                : activeTool ===
+                  "line"
+                ? "Lines"
+                : activeTool ===
+                  "shape"
+                ? "Elements"
+                : "Text";
+
+        const getScenePoint = (
+            event: any
+        ) =>
+            canvas.getScenePoint(
+                event.e
+            );
+
+        const isEditableText = (
+            obj: FabricObject
+        ): obj is IText =>
+            obj.type ===
+            "i-text";
+
+        const finalizeCreatedObject = (
+            object: FabricObject
+        ) => {
+
+            object.set({
+                selectable:
+                    true
+            });
+
+            object.setCoords();
+
+            canvas.fire(
+                "object:modified",
+                {
+                    target:
+                        object
+                }
+            );
+        };
+
+        const createPolygonPoints = (
+            width: number,
+            height: number
+        ) => [
+            {
+                x: width / 2,
+                y: 0
+            },
+            {
+                x: width,
+                y: height * 0.38
+            },
+            {
+                x: width * 0.82,
+                y: height
+            },
+            {
+                x: width * 0.18,
+                y: height
+            },
+            {
+                x: 0,
+                y: height * 0.38
+            }
+        ];
 
         const resetCanvas = (
             down?: any,
@@ -102,7 +184,7 @@ export const useEditorSetup = ({
                 "all-scroll";
 
             canvas.defaultCursor =
-                "default";
+                "auto";
 
             canvas.isDrawingMode =
                 false;
@@ -229,6 +311,10 @@ export const useEditorSetup = ({
                     "path:created",
                     onPathCreated
                 );
+
+                URL.revokeObjectURL(
+                    customCursor
+                );
             };
         }
 
@@ -263,9 +349,14 @@ export const useEditorSetup = ({
                     event: any
                 ) => {
 
+                    if (
+                        mouseDown
+                    )
+                        return;
+
                     const pointer =
-                        canvas.getScenePoint(
-                            event.e
+                        getScenePoint(
+                            event
                         );
 
                     mouseDown =
@@ -280,6 +371,9 @@ export const useEditorSetup = ({
                                 pointer.y
                             ],
                             {
+                                id:
+                                    "added-line",
+
                                 stroke:
                                     strokeColor,
 
@@ -308,13 +402,45 @@ export const useEditorSetup = ({
                         return;
 
                     const pointer =
-                        canvas.getScenePoint(
-                            event.e
+                        getScenePoint(
+                            event
                         );
 
+                    const nextPoint = {
+                        x: pointer.x,
+                        y: pointer.y
+                    };
+
+                    if (
+                        event.e.ctrlKey
+                    ) {
+                        const deltaX =
+                            Math.abs(
+                                pointer.x -
+                                line.x1
+                            );
+
+                        const deltaY =
+                            Math.abs(
+                                pointer.y -
+                                line.y1
+                            );
+
+                        if (
+                            deltaY >
+                            deltaX
+                        ) {
+                            nextPoint.x =
+                                line.x1;
+                        } else {
+                            nextPoint.y =
+                                line.y1;
+                        }
+                    }
+
                     line.set({
-                        x2: pointer.x,
-                        y2: pointer.y
+                        x2: nextPoint.x,
+                        y2: nextPoint.y
                     });
 
                     canvas.requestRenderAll();
@@ -345,12 +471,9 @@ export const useEditorSetup = ({
                             line
                         );
                     } else {
-                        line.set({
-                            selectable:
-                                true
-                        });
-
-                        line.setCoords();
+                        finalizeCreatedObject(
+                            line
+                        );
                     }
 
                     mouseDown =
@@ -375,12 +498,16 @@ export const useEditorSetup = ({
                 upHandler
             );
 
-            return () =>
+            return () => {
                 resetCanvas(
                     mouseDownHandler,
                     moveHandler,
                     upHandler
                 );
+                URL.revokeObjectURL(
+                    customCursor
+                );
+            };
         }
 
         // -------------------
@@ -399,6 +526,9 @@ export const useEditorSetup = ({
                     : selectedShape ===
                       "circle"
                     ? CircleIcon
+                    : selectedShape ===
+                      "polygon"
+                    ? PentagonIcon
                     : TriangleIcon;
 
             const customCursor =
@@ -428,12 +558,17 @@ export const useEditorSetup = ({
                     event: any
                 ) => {
 
+                    if (
+                        mouseDown
+                    )
+                        return;
+
                     mouseDown =
                         true;
 
                     start =
-                        canvas.getScenePoint(
-                            event.e
+                        getScenePoint(
+                            event
                         );
 
                     switch (
@@ -501,6 +636,30 @@ export const useEditorSetup = ({
                                     selectable:
                                         false
                                 });
+                            break;
+
+                        case "polygon":
+                            object =
+                                new Polygon(
+                                    createPolygonPoints(
+                                        0,
+                                        0
+                                    ),
+                                    {
+                                        left:
+                                            start.x,
+                                        top:
+                                            start.y,
+                                        fill:
+                                            "transparent",
+                                        stroke:
+                                            strokeColor,
+                                        strokeWidth:
+                                            2,
+                                        selectable:
+                                            false
+                                    }
+                                );
                     }
 
                     canvas.add(
@@ -520,8 +679,8 @@ export const useEditorSetup = ({
                         return;
 
                     const pointer =
-                        canvas.getScenePoint(
-                            event.e
+                        getScenePoint(
+                            event
                         );
 
                     const width =
@@ -546,6 +705,26 @@ export const useEditorSetup = ({
                             width,
                             height
                         });
+
+                        if (
+                            pointer.x <
+                            start.x
+                        ) {
+                            object.set({
+                                left:
+                                    pointer.x
+                            });
+                        }
+
+                        if (
+                            pointer.y <
+                            start.y
+                        ) {
+                            object.set({
+                                top:
+                                    pointer.y
+                            });
+                        }
                     }
 
                     if (
@@ -560,6 +739,54 @@ export const useEditorSetup = ({
                                 height /
                                 2
                         });
+
+                        if (
+                            pointer.x <
+                            start.x
+                        ) {
+                            object.set({
+                                left:
+                                    pointer.x
+                            });
+                        }
+
+                        if (
+                            pointer.y <
+                            start.y
+                        ) {
+                            object.set({
+                                top:
+                                    pointer.y
+                            });
+                        }
+                    }
+
+                    if (
+                        object instanceof
+                        Polygon
+                    ) {
+                        object.set({
+                            points:
+                                createPolygonPoints(
+                                    width,
+                                    height
+                                )
+                        });
+
+                        object.setDimensions();
+
+                        object.set({
+                            left:
+                                pointer.x <
+                                start.x
+                                    ? pointer.x
+                                    : start.x,
+                            top:
+                                pointer.y <
+                                start.y
+                                    ? pointer.y
+                                    : start.y
+                        });
                     }
 
                     canvas.requestRenderAll();
@@ -568,15 +795,61 @@ export const useEditorSetup = ({
             const up =
                 () => {
 
-                    if (
-                        object
-                    ) {
-                        object.set({
-                            selectable:
-                                true
-                        });
+                    if (!object) {
+                        mouseDown =
+                            false;
 
-                        object.setCoords();
+                        return;
+                    }
+
+                    let isDot =
+                        false;
+
+                    if (
+                        object.type ===
+                            "rect" ||
+                        object.type ===
+                            "triangle"
+                    ) {
+                        isDot =
+                            object.width <
+                                1 ||
+                            object.height <
+                                1;
+                    }
+
+                    if (
+                        object.type ===
+                        "ellipse"
+                    ) {
+                        isDot =
+                            object.rx <
+                                0.5 ||
+                            object.ry <
+                                0.5;
+                    }
+
+                    if (
+                        object instanceof
+                        Polygon
+                    ) {
+                        isDot =
+                            object.width <
+                                1 ||
+                            object.height <
+                                1;
+                    }
+
+                    if (
+                        isDot
+                    ) {
+                        canvas.remove(
+                            object
+                        );
+                    } else {
+                        finalizeCreatedObject(
+                            object
+                        );
                     }
 
                     mouseDown =
@@ -601,22 +874,23 @@ export const useEditorSetup = ({
                 up
             );
 
-            return () =>
+            return () => {
                 resetCanvas(
                     down,
                     move,
                     up
                 );
+                URL.revokeObjectURL(
+                    customCursor
+                );
+            };
         }
 
         // -------------------
         // TEXT
         // -------------------
 
-        if (
-            activeTool ===
-            "text"
-        ) {
+        if (activeTool === "text") {
 
             const cursor =
                 componentToUrl(
@@ -627,33 +901,45 @@ export const useEditorSetup = ({
                 `url(${cursor}), auto`
             );
 
-            let allow =
-                true;
 
-            const addText =
-                async (
-                    event: any
-                ) => {
+            let allow = true;
 
-                    if (
-                        !allow
+            let disposed = false;
+
+            const addText = async (event: any) => {
+
+                    if (!allow) return;
+
+                    const pointer = getScenePoint(event);
+
+                    const scenePoint = new Point(
+                        pointer.x,
+                        pointer.y
                     )
-                        return;
 
-                    const pointer =
-                        canvas.getScenePoint(
-                            event.e
-                        );
+                    const isIntersectingText = canvas.getObjects().some((obj) =>
 
-                    const font =
-                        new FontFaceObserver(
-                            fontRef.current
-                        );
+                        isEditableText(obj) &&
+                        obj.containsPoint(scenePoint)
 
-                    await font.load(
-                        null,
-                        15000
                     );
+
+                    if (isIntersectingText) return;
+
+                    allow = false;
+
+                    const font = new FontFaceObserver(fontRef.current);
+
+                    try {
+                        await font.load(
+                            null,
+                            15000
+                        );
+                    } catch {
+                        // Continue with the requested family; the browser may still have a fallback.
+                    }
+
+                    if (disposed) return;
 
                     const text =
                         new IText(
@@ -672,7 +958,7 @@ export const useEditorSetup = ({
                                 fontFamily:
                                     fontRef.current,
                                 fontSize:
-                                    40
+                                    fontSize
                             }
                         );
 
@@ -683,43 +969,34 @@ export const useEditorSetup = ({
                         text
                     );
 
+                    text.initDimensions();
+
                     canvas.setActiveObject(
                         text
                     );
+
+                    canvas.renderAll();
 
                     text.enterEditing();
 
                     text.selectAll();
 
-                    allow =
-                        false;
                 };
 
-            const exitHandler =
-                (
-                    e: any
-                ) => {
+            const exitHandler = (e: any) => {
 
-                    const text =
-                        e.target;
+                const text = e.target;
 
-                    if (
-                        text &&
-                        !text.text.trim()
-                    ) {
-                        canvas.remove(
-                            text
-                        );
-                    }
-
-                    setTimeout(
-                        () => {
-                            allow =
-                                true;
-                        },
-                        200
+                if (text && !text.text.trim()) {
+                    canvas.remove(
+                        text
                     );
-                };
+                }
+
+                setTimeout(() => {
+                    allow = true;
+                }, 200);
+            };
 
             canvas.on(
                 "mouse:down",
@@ -733,6 +1010,9 @@ export const useEditorSetup = ({
 
             return () => {
 
+                disposed =
+                    true;
+
                 canvas.off(
                     "mouse:down",
                     addText
@@ -743,7 +1023,33 @@ export const useEditorSetup = ({
                     exitHandler
                 );
 
+                const active =
+                    canvas.getActiveObject();
+
+                if (
+                    active &&
+                    isEditableText(
+                        active
+                    ) &&
+                    active.isEditing
+                ) {
+                    const text =
+                        active.text?.trim();
+
+                    if (!text) {
+                        canvas.remove(
+                            active
+                        );
+                    }
+
+                    canvas.discardActiveObject();
+                }
+
                 resetCanvas();
+
+                URL.revokeObjectURL(
+                    cursor
+                );
             };
         }
 
@@ -756,12 +1062,13 @@ export const useEditorSetup = ({
 
     }, [
         canvas,
-        workspace,
         activeTool,
         selectedShape,
         strokeColor,
         fontFamily,
-        setTool
+        fontSize,
+        setTool,
+        toolRef
     ]);
 
     useEffect(() => {

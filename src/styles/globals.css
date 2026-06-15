@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'BobaMilky';
+  font-style: normal;
+  font-weight: 400;
+  src: url('https://fonts.cdnfonts.com/s/97532/BobaMilky-RpRev.woff') format('woff');
+}

@@ -64,7 +64,7 @@ export default class CanvasRuler {
         ruleSize: 20,
         fontSize: 10,
         enabled: false,
-        backgroundColor: "#fff",
+        backgroundColor: "#ffffff",
         borderColor: "#ddd",
         highlightColor: "#007fff",
         textColor: "#888",

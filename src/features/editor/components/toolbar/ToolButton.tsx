@@ -1,98 +1,73 @@
-import type {
-    LucideIcon
-} from "lucide-react";
+// components/editor/toolbar/ToolButton.tsx
 
-import {
-    type ToolType,
-    type ShapeType,
-    useEditorStore
-} from "../../store/editor.store";
+import clsx from "clsx";
+import type { LucideIcon } from "lucide-react";
 
 type Props = {
-    tool: ToolType;
-
+    tool?: string;
     icon: LucideIcon;
-
+    active?: boolean;
+    label?: string;
     onClick?: () => void;
-
-    shape?: ShapeType;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 };
 
 export default function ToolButton({
     tool,
     icon: Icon,
+    active,
+    label,
     onClick,
-    shape
+    onMouseEnter,
+    onMouseLeave
 }: Props) {
-
-    const {
-        activeTool,
-        selectedShape,
-        setTool
-    } = useEditorStore();
-
-    const isShapeTool =
-        tool === "shape";
-
-    const isActive =
-        isShapeTool
-            ? (
-                activeTool ===
-                    "shape" &&
-                selectedShape ===
-                    shape
-            )
-            : (
-                activeTool ===
-                tool
-            );
-
-    const handleClick =
-        () => {
-
-            if (onClick) {
-                onClick();
-                return;
-            }
-
-            setTool(tool);
-        };
 
     return (
         <button
-            onClick={
-                handleClick
+            type="button"
+            aria-label={
+                label ??
+                tool
             }
-            className={`
+            title={
+                label ??
+                tool
+            }
+            onClick={onClick}
+            onMouseEnter={
+                onMouseEnter
+            }
+            onMouseLeave={
+                onMouseLeave
+            }
+            className={clsx(
+                `
                 w-11
                 h-11
-                rounded-xl
+                rounded-lg
                 flex
                 items-center
                 justify-center
                 transition-all
-                duration-200
+                duration-150
                 border
-
-                ${
-                    isActive
-                        ? `
-                            bg-zinc-900
-                            text-white
-                            border-zinc-900
-                          `
-                        : `
-                            bg-white
-                            text-zinc-600
-                            border-transparent
-                            hover:bg-zinc-100
-                          `
-                }
-            `}
+                `,
+                active
+                    ? `
+                    bg-zinc-900
+                    text-white
+                    border-zinc-900
+                    `
+                    : `
+                    bg-white
+                    hover:bg-zinc-100
+                    border-transparent
+                    text-zinc-700
+                    `
+            )}
         >
-            <Icon
-                size={20}
-            />
+            <Icon size={18} />
         </button>
     );
 }

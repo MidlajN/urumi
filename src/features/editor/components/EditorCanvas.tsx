@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { DragIcon, ResetIcon, ZoomIn, ZoomOut } from "@/features/editor/components/Icons"
 import { motion } from 'framer-motion'
-import { useCanvas } from '../hooks/useCanvas'
+
 import { useEditorSetup } from '../hooks/useEditorSetup'
+import { useCanvas } from '../canvas/CanvasProvider'
 
 
 export default function EditorCanvas() {
 
-    const { containerRef, canvasRef, canvas, workspace } = useCanvas()
+    const { containerRef, canvasRef, canvas, toolRef } = useCanvas()
 
     useEditorSetup({
         canvas,
-        workspace
+        toolRef
     })
 
     return (
@@ -48,7 +49,7 @@ const BottomNav = () => {
     return (
         <>
             <motion.div 
-                className="absolute bottom-5 right-1/2 translate-x-1/2 z-10 flex gap-4 items-center"
+                className="absolute bottom-5 right-5 z-10 flex gap-4 items-center"
                 initial={{ opacity: 0, translateY: 40 }}
                 animate={{ opacity: 1, translateY: 0 }}
                 exit={{ opacity: 0, translateY: 40}}

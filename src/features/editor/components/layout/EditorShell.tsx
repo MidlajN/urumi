@@ -1,6 +1,7 @@
 import LeftToolbar from "./LeftToolbar";
 
 import CanvasViewport from "./CanvasViewport";
+import RightPanel from "./RightPanel";
 
 export default function EditorShell() {
 
@@ -17,6 +18,8 @@ export default function EditorShell() {
             <LeftToolbar />
 
             <CanvasViewport />
+
+            <RightPanel />
         </div>
     );
 }
