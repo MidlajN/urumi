@@ -721,7 +721,7 @@ export default function RightPanel() {
             </header>
 
             <div className="flex-1 overflow-y-auto">
-                <PanelSection title="Machine operation">
+                {/* <PanelSection title="Machine operation">
                     <div className="space-y-3">
                         <div className="grid grid-cols-[80px_1fr] items-center gap-3 text-[13px]">
                             <span className="font-semibold text-zinc-400">
@@ -740,7 +740,7 @@ export default function RightPanel() {
                             </span>
                         </div>
                     </div>
-                </PanelSection>
+                </PanelSection> */}
 
                 <PanelSection title="Operation color">
                     <OperationSwatches />

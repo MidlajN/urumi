@@ -1,4 +1,3 @@
-// features/editor/components/layout/LeftToolbar.tsx
 
 import {
     useEffect,
@@ -40,7 +39,6 @@ type MenuType =
 export default function LeftToolbar() {
 
     const { workspace } = useCanvas()
-
     
     const toolbarRef = useRef<HTMLDivElement>(null);
 

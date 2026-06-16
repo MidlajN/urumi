@@ -91,6 +91,7 @@ export function CanvasProvider({
             await preloadAllIcons();
             defineControlPoints();
         }
+
         const cleanupPromise = initCanvas()
 
         const workspaceInstance = new Workspace(
