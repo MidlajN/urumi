@@ -4,6 +4,8 @@ import { motion } from 'framer-motion'
 
 import { useEditorSetup } from '../hooks/useEditorSetup'
 import { useCanvas } from '../canvas/CanvasProvider'
+import { useSelectionGeometry } from '../hooks/useSelectionGeometry'
+import SelectionDimensionsOverlay from './SelectionDimensionsOverlay'
 
 
 export default function EditorCanvas() {
@@ -15,12 +17,23 @@ export default function EditorCanvas() {
         toolRef
     })
 
+    const {
+        geometry,
+        updateGeometry
+    } = useSelectionGeometry(
+        canvas
+    )
+
     return (
         <div
             ref={containerRef}
-            className="w-full h-full"
+            className="relative w-full h-full"
         >
             <canvas ref={canvasRef} />
+            <SelectionDimensionsOverlay
+                geometry={geometry}
+                onCommit={updateGeometry}
+            />
             <BottomNav />
         </div>
     )

@@ -13,6 +13,7 @@ import {
 import {
     useEffect,
     useMemo,
+    useRef,
     useState
 } from "react";
 
@@ -22,6 +23,12 @@ import type { FabricObject } from "fabric";
 
 import { OPERATION_COLORS, useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
+import {
+    formatMeasurement,
+    parseMeasurement,
+    useSelectionGeometry,
+    type SelectionGeometryPatch
+} from "../../hooks/useSelectionGeometry";
 
 
 const fontOptions = [
@@ -168,34 +175,153 @@ function ActionButton({
 
 function GeometryField({
     label,
-    value
+    value,
+    unit,
+    minValue,
+    disabled,
+    onCommit
 }: {
     label: string;
-    value: string;
+    value: number;
+    unit: "mm" | "deg";
+    minValue?: number;
+    disabled?: boolean;
+    onCommit: (
+        value: number
+    ) => void;
 }) {
+    const skipBlurCommitRef =
+        useRef(
+            false
+        );
+
+    const [
+        draft,
+        setDraft
+    ] = useState(
+        formatMeasurement(
+            value
+        )
+    );
+
+    useEffect(() => {
+        setDraft(
+            formatMeasurement(
+                value
+            )
+        );
+    }, [
+        value
+    ]);
+
+    const commit =
+        (
+            nextDraft =
+                draft
+        ) => {
+            const parsed =
+                parseMeasurement(
+                    nextDraft
+                );
+
+            if (
+                parsed ===
+                    null ||
+                (
+                    minValue !==
+                        undefined &&
+                    parsed <
+                        minValue
+                )
+            ) {
+                setDraft(
+                    formatMeasurement(
+                        value
+                    )
+                );
+                return;
+            }
+
+            onCommit(
+                parsed
+            );
+        };
+
     return (
         <label className="block">
             <span className="mb-1 block text-[11px] font-semibold uppercase text-zinc-400">
                 {label}
             </span>
-            <input
-                readOnly
-                value={value}
-                className="
-                    h-8
-                    w-full
-                    rounded
-                    border
-                    border-zinc-200
-                    bg-zinc-50
-                    px-2
-                    text-right
-                    text-[13px]
-                    font-medium
-                    text-zinc-700
-                    outline-none
-                "
-            />
+            <div className="flex h-8 items-center rounded border border-zinc-200 bg-zinc-50 px-2">
+                <input
+                    disabled={
+                        disabled
+                    }
+                    value={
+                        draft
+                    }
+                    onChange={(event) =>
+                        setDraft(
+                            event.target.value
+                        )
+                    }
+                    onBlur={(event) =>
+                    {
+                        if (
+                            skipBlurCommitRef.current
+                        ) {
+                            skipBlurCommitRef.current =
+                                false;
+                            return;
+                        }
+
+                        commit(
+                            event.currentTarget.value
+                        );
+                    }}
+                    onKeyDown={(event) => {
+                        if (
+                            event.key ===
+                            "Enter"
+                        ) {
+                            event.preventDefault();
+                            commit(
+                                event.currentTarget.value
+                            );
+                            event.currentTarget.blur();
+                        }
+
+                        if (
+                            event.key ===
+                            "Escape"
+                        ) {
+                            skipBlurCommitRef.current =
+                                true;
+                            setDraft(
+                                formatMeasurement(
+                                    value
+                                )
+                            );
+                            event.currentTarget.blur();
+                        }
+                    }}
+                    className="
+                        min-w-0
+                        flex-1
+                        bg-transparent
+                        text-right
+                        text-[13px]
+                        font-medium
+                        tabular-nums
+                        text-zinc-700
+                        outline-none
+                        disabled:text-zinc-300
+                    "
+                />
+                <span className="ml-1 text-[12px] font-semibold text-zinc-400">
+                    {unit}
+                </span>
+            </div>
         </label>
     );
 }
@@ -459,27 +585,112 @@ function OperationSwatches() {
 }
 
 function GeometryGrid() {
+    const {
+        canvas
+    } = useCanvas();
+
+    const {
+        geometry,
+        updateGeometry
+    } = useSelectionGeometry(
+        canvas
+    );
+
+    const disabled =
+        !geometry;
+
+    const commit =
+        (
+            patch: SelectionGeometryPatch
+        ) => {
+            updateGeometry(
+                patch
+            );
+        };
+
     return (
         <div className="grid grid-cols-2 gap-3">
             <GeometryField
                 label="X"
-                value="0 mm"
+                value={
+                    geometry?.x ??
+                    0
+                }
+                unit="mm"
+                minValue={1}
+                disabled={
+                    disabled
+                }
+                onCommit={(x) =>
+                    commit({
+                        x
+                    })
+                }
             />
             <GeometryField
                 label="Y"
-                value="0 mm"
+                value={
+                    geometry?.y ??
+                    0
+                }
+                unit="mm"
+                minValue={1}
+                disabled={
+                    disabled
+                }
+                onCommit={(y) =>
+                    commit({
+                        y
+                    })
+                }
             />
             <GeometryField
                 label="W"
-                value="0 mm"
+                value={
+                    geometry?.width ??
+                    0
+                }
+                unit="mm"
+                disabled={
+                    disabled
+                }
+                onCommit={(width) =>
+                    commit({
+                        width
+                    })
+                }
             />
             <GeometryField
                 label="H"
-                value="0 mm"
+                value={
+                    geometry?.height ??
+                    0
+                }
+                unit="mm"
+                disabled={
+                    disabled
+                }
+                onCommit={(height) =>
+                    commit({
+                        height
+                    })
+                }
             />
             <GeometryField
                 label="Rotate"
-                value="0 deg"
+                value={
+                    geometry?.rotation ??
+                    0
+                }
+                unit="deg"
+                disabled={
+                    disabled
+                }
+                onCommit={(rotation) =>
+                    commit({
+                        rotation
+                    })
+                }
             />
         </div>
     );
