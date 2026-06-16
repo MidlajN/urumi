@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "urumi-9ca4d"
+  },
+  "targets": {
+    "urumi-9ca4d": {
+      "hosting": {
+        "app": [
+          "urumi"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

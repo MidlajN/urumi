@@ -6,6 +6,7 @@ import { useEditorSetup } from '../hooks/useEditorSetup'
 import { useCanvas } from '../canvas/CanvasProvider'
 import { useSelectionGeometry } from '../hooks/useSelectionGeometry'
 import SelectionDimensionsOverlay from './SelectionDimensionsOverlay'
+import { Redo, Undo } from 'lucide-react'
 
 
 export default function EditorCanvas() {
@@ -69,6 +70,42 @@ const BottomNav = () => {
                 transition={{ duration: 0.5 }}
             >
                 
+                <div className="flex h-fit shadow-xl rounded-md">
+                    <motion.button 
+                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
+                        whileTap={{ scale: 0.95, background: '#f3f4f6' }}
+                        onClick={() => {
+                            if (!workspace) return;
+
+                            workspace.undo()
+                        }}
+                    >
+                        <Undo width={16} height={16} />
+                    </motion.button>
+                    <motion.button
+                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]" 
+                        whileTap={{ scale: 0.95, background: '#f3f4f6' }}
+                        onClick={() => {
+                            if (!workspace) return;
+
+                            workspace.redo();
+                        }}
+                    >
+                        <Redo width={16} height={16} />
+                    </motion.button>
+                    <motion.button
+                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681] rounded-e-md" 
+                        whileTap={{ scale: 0.95, background: '#f3f4f6' }}
+                        onClick={() => { 
+                            if (!workspace) return
+
+                            workspace.setZoomAuto()
+                        }}
+                    >
+                        <ResetIcon width={18} height={18} />
+                    </motion.button>
+                </div>
+
                 <div className="flex h-fit shadow-xl rounded-md">
                     <motion.button 
                         className="px-5 py-3 bg-white transition-all duration-300 rounded-s-md border border-transparent hover:border-[#1c809681]"

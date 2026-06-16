@@ -474,6 +474,22 @@ export class Workspace {
         this.viewport.zoomOut();
     }
 
+    undo(): void {
+        this.history.undo();
+    }
+
+    canUndo(): boolean {
+        return this.history.canUndo();
+    }
+
+    redo(): void {
+        this.history.redo()
+    }
+
+    canRedo(): boolean {
+        return this.history.canRedo();
+    }
+
     destroy(): void {
         this.viewport.destroy();
 

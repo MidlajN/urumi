@@ -178,6 +178,14 @@ export class HistoryManager {
         });
     }
 
+    canUndo(): boolean {
+        return this.undoStack.length > 0;
+    }
+
+    canRedo(): boolean {
+        return this.redoStack.length > 0;
+    }
+
     private saveState = (): void => {
 
         if (this.isUndoRedo) return;
