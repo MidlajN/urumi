@@ -43,6 +43,7 @@ type EditorStore = {
     strokeColor: string;
     fontFamily: string;
     fontSize: number;
+    dimensionsOverlayEnabled: boolean;
 
     setTool: (
         tool: ToolType
@@ -63,6 +64,8 @@ type EditorStore = {
     setFontSize: (
         size: number
     ) => void;
+
+    toggleDimensionsOverlay: () => void;
 };
 
 export const useEditorStore =
@@ -73,6 +76,7 @@ export const useEditorStore =
         strokeColor: "#000000",
         fontFamily: "BobaMilky",
         fontSize: 40,
+        dimensionsOverlayEnabled: true,
 
         setTool: (tool) =>
             set({
@@ -104,4 +108,10 @@ export const useEditorStore =
             set({
                 fontSize
             }),
+
+        toggleDimensionsOverlay: () =>
+            set((state) => ({
+                dimensionsOverlayEnabled:
+                    !state.dimensionsOverlayEnabled
+            })),
     }));

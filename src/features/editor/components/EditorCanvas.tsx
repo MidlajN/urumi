@@ -6,24 +6,19 @@ import { useEditorSetup } from '../hooks/useEditorSetup'
 import { useCanvas } from '../canvas/CanvasProvider'
 import { useSelectionGeometry } from '../hooks/useSelectionGeometry'
 import SelectionDimensionsOverlay from './SelectionDimensionsOverlay'
-import { Redo, Undo } from 'lucide-react'
+import { Redo, Ruler, Undo } from 'lucide-react'
+import { useEditorStore } from '../store/editor.store'
 
 
 export default function EditorCanvas() {
 
     const { containerRef, canvasRef, canvas, toolRef } = useCanvas()
 
-    useEditorSetup({
-        canvas,
-        toolRef
-    })
+    const dimensionsOverlayEnabled = useEditorStore((state) => state.dimensionsOverlayEnabled)
 
-    const {
-        geometry,
-        updateGeometry
-    } = useSelectionGeometry(
-        canvas
-    )
+    useEditorSetup({ canvas, toolRef })
+
+    const { geometry, updateGeometry } = useSelectionGeometry(canvas)
 
     return (
         <div
@@ -31,10 +26,12 @@ export default function EditorCanvas() {
             className="relative w-full h-full"
         >
             <canvas ref={canvasRef} />
-            <SelectionDimensionsOverlay
-                geometry={geometry}
-                onCommit={updateGeometry}
-            />
+            {dimensionsOverlayEnabled && (
+                <SelectionDimensionsOverlay
+                    geometry={geometry}
+                    onCommit={updateGeometry}
+                />
+            )}
             <BottomNav />
         </div>
     )
@@ -44,7 +41,12 @@ export default function EditorCanvas() {
 /* eslint-disable react/prop-types */
 const BottomNav = () => {
     const { workspace } = useCanvas();
-    const [ dragMode, setDragMode ] = useState(workspace?.getDragMode() ?? false)
+    const [ dragMode, setDragMode ] = useState(workspace?.getDragMode() ?? false);
+    
+    const {
+        dimensionsOverlayEnabled,
+        toggleDimensionsOverlay
+    } = useEditorStore();
 
     useEffect(() => {
         if (!workspace) return;
@@ -122,6 +124,30 @@ const BottomNav = () => {
                         }}
                     >
                         <DragIcon width={16} height={16} style={{ stroke: dragMode ? '#ffffff' : '#22c55e' }} />
+                    </motion.button>
+                    <motion.button
+                        aria-label={
+                            dimensionsOverlayEnabled
+                                ? 'Hide dimensions overlay'
+                                : 'Show dimensions overlay'
+                        }
+                        title={
+                            dimensionsOverlayEnabled
+                                ? 'Hide dimensions overlay'
+                                : 'Show dimensions overlay'
+                        }
+                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
+                        whileTap={{ scale: 0.98, background: '#f3f4f6' }}
+                        style={{ background: dimensionsOverlayEnabled ? '#0891b2' : '#ffffff' }}
+                        onClick={toggleDimensionsOverlay}
+                    >
+                        <Ruler
+                            width={16}
+                            height={16}
+                            style={{
+                                stroke: dimensionsOverlayEnabled ? '#ffffff' : '#0891b2'
+                            }}
+                        />
                     </motion.button>
                     <motion.button 
                         className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
