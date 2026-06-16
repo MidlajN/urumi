@@ -599,6 +599,15 @@ function GeometryGrid() {
     const disabled =
         !geometry;
 
+    const isLineMode =
+        geometry?.mode ===
+        "line";
+
+    const isBboxMode =
+        !geometry ||
+        geometry.mode ===
+            "bbox";
+
     const commit =
         (
             patch: SelectionGeometryPatch
@@ -644,38 +653,60 @@ function GeometryGrid() {
                     })
                 }
             />
-            <GeometryField
-                label="W"
-                value={
-                    geometry?.width ??
-                    0
-                }
-                unit="mm"
-                disabled={
-                    disabled
-                }
-                onCommit={(width) =>
-                    commit({
-                        width
-                    })
-                }
-            />
-            <GeometryField
-                label="H"
-                value={
-                    geometry?.height ??
-                    0
-                }
-                unit="mm"
-                disabled={
-                    disabled
-                }
-                onCommit={(height) =>
-                    commit({
-                        height
-                    })
-                }
-            />
+            {isBboxMode && (
+                <>
+                    <GeometryField
+                        label="W"
+                        value={
+                            geometry?.width ??
+                            0
+                        }
+                        unit="mm"
+                        disabled={
+                            disabled
+                        }
+                        onCommit={(width) =>
+                            commit({
+                                width
+                            })
+                        }
+                    />
+                    <GeometryField
+                        label="H"
+                        value={
+                            geometry?.height ??
+                            0
+                        }
+                        unit="mm"
+                        disabled={
+                            disabled
+                        }
+                        onCommit={(height) =>
+                            commit({
+                                height
+                            })
+                        }
+                    />
+                </>
+            )}
+            {isLineMode && (
+                <GeometryField
+                    label="Length"
+                    value={
+                        geometry?.line?.length ??
+                        0
+                    }
+                    unit="mm"
+                    disabled={
+                        disabled
+                    }
+                    onCommit={(length) =>
+                        commit({
+                            length
+                        })
+                    }
+                />
+            )}
             <GeometryField
                 label="Rotate"
                 value={
