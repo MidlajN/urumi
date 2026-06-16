@@ -614,191 +614,190 @@ export function useSelectionGeometry(canvas: Canvas | null) {
         };
     }, [canvas, syncGeometry]);
 
-  const updateGeometry = useCallback(
-    (patch: SelectionGeometryPatch) => {
-      if (!canvas) {
-        return;
-      }
+    const updateGeometry = useCallback((patch: SelectionGeometryPatch) => {
+        if (!canvas) {
+            return;
+        }
 
-      const object = canvas.getActiveObject();
+        const object = canvas.getActiveObject();
 
-      if (!object) {
-        return;
-      }
+        if (!object) {
+            return;
+        }
 
-      const nextWidth = cleanNumber(patch.width);
+        const nextWidth = cleanNumber(patch.width);
 
-      const nextHeight = cleanNumber(patch.height);
+        const nextHeight = cleanNumber(patch.height);
 
-      const nextLength = cleanNumber(patch.length);
+        const nextLength = cleanNumber(patch.length);
 
-      const nextRotation = cleanNumber(patch.rotation);
+        const nextRotation = cleanNumber(patch.rotation);
 
-      const nextX = cleanNumber(patch.x);
+        const nextX = cleanNumber(patch.x);
 
-      const nextY = cleanNumber(patch.y);
+        const nextY = cleanNumber(patch.y);
 
-      const finishUpdate = () => {
+        const finishUpdate = () => {
+            object.setCoords();
+
+            canvas.fire("object:modified", {
+                target: object,
+            });
+
+            canvas.requestRenderAll();
+            setGeometry(readSelectionGeometry(canvas));
+        };
+
+        if (patch.node) {
+            moveNodeToScenePoint(
+                object,
+                patch.node.id,
+                new Point(patch.node.x, patch.node.y),
+            );
+
+            finishUpdate();
+
+            return;
+        }
+
+        if (patch.segment) {
+            const nextSegmentLength = cleanNumber(patch.segment.length);
+
+            if (
+            nextSegmentLength !== undefined &&
+            nextSegmentLength > MIN_DIMENSION
+            ) {
+            const sceneNodes = getSceneNodes(object);
+
+            const nodeGeometry = getNodeGeometry(object, canvas);
+
+            const segment = nodeGeometry.segments.find(
+                (item) => item.endNodeId === patch.segment?.endNodeId,
+            );
+
+            const startNode = sceneNodes.find(
+                (node) => node.id === segment?.startNodeId,
+            );
+
+            const endNode = sceneNodes.find(
+                (node) => node.id === patch.segment?.endNodeId,
+            );
+
+            if (segment && startNode && endNode) {
+                const currentLength = distance(startNode.scene, endNode.scene);
+
+                if (currentLength > MIN_DIMENSION) {
+                const targetLength = mmToScene(nextSegmentLength);
+
+                const ratio = targetLength / currentLength;
+
+                const nextScenePoint = new Point(
+                    startNode.scene.x +
+                    (endNode.scene.x - startNode.scene.x) * ratio,
+                    startNode.scene.y +
+                    (endNode.scene.y - startNode.scene.y) * ratio,
+                );
+
+                moveNodeToScenePoint(object, endNode.id, nextScenePoint);
+                }
+            }
+            }
+
+            finishUpdate();
+            return;
+        }
+
+        const preserveCenter =
+            nextWidth !== undefined ||
+            nextHeight !== undefined ||
+            nextLength !== undefined ||
+            nextRotation !== undefined;
+
+        const center = preserveCenter ? object.getCenterPoint() : null;
+
+        if (
+            nextLength !== undefined &&
+            nextLength > MIN_DIMENSION &&
+            isLineObject(object)
+        ) {
+            const targetLength = mmToScene(nextLength);
+
+            const { start, end } = getLineScenePoints(object);
+
+            const currentLength = distance(start, end);
+
+            if (currentLength > MIN_DIMENSION) {
+            const ratio = targetLength / currentLength;
+
+            object.set({
+                scaleX: (object.scaleX ?? 1) * ratio,
+                scaleY: (object.scaleY ?? 1) * ratio,
+            });
+            }
+        }
+
+        if (nextWidth !== undefined && nextWidth > MIN_DIMENSION) {
+            const targetWidth = mmToScene(nextWidth);
+
+            const currentWidth = object.getScaledWidth();
+
+            if (currentWidth > MIN_DIMENSION) {
+            object.set({
+                scaleX: (object.scaleX ?? 1) * (targetWidth / currentWidth),
+            });
+            }
+        }
+
+        if (nextHeight !== undefined && nextHeight > MIN_DIMENSION) {
+            const targetHeight = mmToScene(nextHeight);
+
+            const currentHeight = object.getScaledHeight();
+
+            if (currentHeight > MIN_DIMENSION) {
+            object.set({
+                scaleY: (object.scaleY ?? 1) * (targetHeight / currentHeight),
+            });
+            }
+        }
+
+        if (nextRotation !== undefined) {
+            object.set({
+            angle: nextRotation,
+            });
+        }
+
+        if (center) {
+            object.setPositionByOrigin(center, "center", "center");
+        }
+
         object.setCoords();
 
+        if (nextX !== undefined || nextY !== undefined) {
+            const bounds = object.getBoundingRect();
+
+            const targetX = nextX === undefined ? bounds.left : mmToScene(nextX);
+
+            const targetY = nextY === undefined ? bounds.top : mmToScene(nextY);
+
+            object.set({
+            left: (object.left ?? 0) + targetX - bounds.left,
+            top: (object.top ?? 0) + targetY - bounds.top,
+            });
+
+            object.setCoords();
+        }
+
         canvas.fire("object:modified", {
-          target: object,
+            target: object,
         });
 
         canvas.requestRenderAll();
         setGeometry(readSelectionGeometry(canvas));
-      };
 
-      if (patch.node) {
-        moveNodeToScenePoint(
-          object,
-          patch.node.id,
-          new Point(patch.node.x, patch.node.y),
-        );
+    },[canvas]);
 
-        finishUpdate();
-        return;
-      }
-
-      if (patch.segment) {
-        const nextSegmentLength = cleanNumber(patch.segment.length);
-
-        if (
-          nextSegmentLength !== undefined &&
-          nextSegmentLength > MIN_DIMENSION
-        ) {
-          const sceneNodes = getSceneNodes(object);
-
-          const nodeGeometry = getNodeGeometry(object, canvas);
-
-          const segment = nodeGeometry.segments.find(
-            (item) => item.endNodeId === patch.segment?.endNodeId,
-          );
-
-          const startNode = sceneNodes.find(
-            (node) => node.id === segment?.startNodeId,
-          );
-
-          const endNode = sceneNodes.find(
-            (node) => node.id === patch.segment?.endNodeId,
-          );
-
-          if (segment && startNode && endNode) {
-            const currentLength = distance(startNode.scene, endNode.scene);
-
-            if (currentLength > MIN_DIMENSION) {
-              const targetLength = mmToScene(nextSegmentLength);
-
-              const ratio = targetLength / currentLength;
-
-              const nextScenePoint = new Point(
-                startNode.scene.x +
-                  (endNode.scene.x - startNode.scene.x) * ratio,
-                startNode.scene.y +
-                  (endNode.scene.y - startNode.scene.y) * ratio,
-              );
-
-              moveNodeToScenePoint(object, endNode.id, nextScenePoint);
-            }
-          }
-        }
-
-        finishUpdate();
-        return;
-      }
-
-      const preserveCenter =
-        nextWidth !== undefined ||
-        nextHeight !== undefined ||
-        nextLength !== undefined ||
-        nextRotation !== undefined;
-
-      const center = preserveCenter ? object.getCenterPoint() : null;
-
-      if (
-        nextLength !== undefined &&
-        nextLength > MIN_DIMENSION &&
-        isLineObject(object)
-      ) {
-        const targetLength = mmToScene(nextLength);
-
-        const { start, end } = getLineScenePoints(object);
-
-        const currentLength = distance(start, end);
-
-        if (currentLength > MIN_DIMENSION) {
-          const ratio = targetLength / currentLength;
-
-          object.set({
-            scaleX: (object.scaleX ?? 1) * ratio,
-            scaleY: (object.scaleY ?? 1) * ratio,
-          });
-        }
-      }
-
-      if (nextWidth !== undefined && nextWidth > MIN_DIMENSION) {
-        const targetWidth = mmToScene(nextWidth);
-
-        const currentWidth = object.getScaledWidth();
-
-        if (currentWidth > MIN_DIMENSION) {
-          object.set({
-            scaleX: (object.scaleX ?? 1) * (targetWidth / currentWidth),
-          });
-        }
-      }
-
-      if (nextHeight !== undefined && nextHeight > MIN_DIMENSION) {
-        const targetHeight = mmToScene(nextHeight);
-
-        const currentHeight = object.getScaledHeight();
-
-        if (currentHeight > MIN_DIMENSION) {
-          object.set({
-            scaleY: (object.scaleY ?? 1) * (targetHeight / currentHeight),
-          });
-        }
-      }
-
-      if (nextRotation !== undefined) {
-        object.set({
-          angle: nextRotation,
-        });
-      }
-
-      if (center) {
-        object.setPositionByOrigin(center, "center", "center");
-      }
-
-      object.setCoords();
-
-      if (nextX !== undefined || nextY !== undefined) {
-        const bounds = object.getBoundingRect();
-
-        const targetX = nextX === undefined ? bounds.left : mmToScene(nextX);
-
-        const targetY = nextY === undefined ? bounds.top : mmToScene(nextY);
-
-        object.set({
-          left: (object.left ?? 0) + targetX - bounds.left,
-          top: (object.top ?? 0) + targetY - bounds.top,
-        });
-
-        object.setCoords();
-      }
-
-      canvas.fire("object:modified", {
-        target: object,
-      });
-
-      canvas.requestRenderAll();
-      setGeometry(readSelectionGeometry(canvas));
-    },
-    [canvas],
-  );
-
-  return {
-    geometry,
-    updateGeometry,
-  };
+    return {
+        geometry,
+        updateGeometry,
+    };
 }
