@@ -46,19 +46,19 @@ export const defineControlPoints = (): void => {
     ctx.restore();
   }
 
-  function renderIconVer(ctx: any, left: any, top: any, styleOverride: any, fabricObject: { angle: any; }) {
+  function renderIconVer(ctx: any, left: any, top: any, _styleOverride: any, fabricObject: { angle: any; }) {
     drawImg(ctx, left, top, verticalImg, 20, 25, fabricObject.angle);
   }
 
-  function renderIconHoz(ctx: any, left: any, top: any, styleOverride: any, fabricObject: { angle: any; }) {
+  function renderIconHoz(ctx: any, left: any, top: any, _styleOverride: any, fabricObject: { angle: any; }) {
     drawImg(ctx, left, top, horizontalImg, 25, 20, fabricObject.angle);
   }
   
-  function renderIconEdge(ctx: any, left: any, top: any, styleOverride: any, fabricObject: { angle: any; }) {
+  function renderIconEdge(ctx: any, left: any, top: any, _styleOverride: any, fabricObject: { angle: any; }) {
     drawImg(ctx, left, top, edgeImg, 20, 20, fabricObject.angle);
   }
 
-  function renderIconRotate(ctx: any, left: any, top: any, styleOverride: any, fabricObject: { angle: any; }) {
+  function renderIconRotate(ctx: any, left: any, top: any, _styleOverride: any, fabricObject: { angle: any; }) {
     drawImg(ctx, left, top, rotateImg, 30, 30, fabricObject.angle);
   }
 

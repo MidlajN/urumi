@@ -18,7 +18,7 @@ import {
 import type { Canvas } from "fabric";
 import { Workspace } from "./engine/Workspace";
 import CanvasRuler from "./plugins/workspace/ruler";
-import CanvasGrid from "./plugins/workspace/Grid";
+import CanvasGrid from "./plugins/workspace/grid";
 
 
 
@@ -92,7 +92,7 @@ export function CanvasProvider({
             defineControlPoints();
         }
 
-        const cleanupPromise = initCanvas()
+        void initCanvas()
 
         const workspaceInstance = new Workspace(
             canvasRef,

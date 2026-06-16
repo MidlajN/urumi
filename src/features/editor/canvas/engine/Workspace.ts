@@ -37,6 +37,8 @@ type ListenerMap = Record<
 >;
 
 type ToolRef = RefObject<string>;
+type CanvasRef = RefObject<HTMLCanvasElement | null>;
+type ContainerRef = RefObject<HTMLDivElement | null>;
 
 type EventHandlers = {
     handleKeydown: (e: KeyboardEvent) => void;
@@ -58,7 +60,7 @@ export class Workspace {
 
     private container: HTMLDivElement;
 
-    private canvasRef: RefObject<HTMLCanvasElement>;
+    private canvasRef: CanvasRef;
 
     private toolRef: ToolRef;
 
@@ -72,12 +74,12 @@ export class Workspace {
 
 
     constructor(
-        canvasRef: RefObject<HTMLCanvasElement>, 
+        canvasRef: CanvasRef, 
         canvasConfig: CanvasConfig, 
         setCanvasConfig: Dispatch<
             SetStateAction<CanvasConfig>
         >, 
-        containerRef: RefObject<HTMLDivElement>, 
+        containerRef: ContainerRef, 
         toolRef: ToolRef
     ) {
 
@@ -127,7 +129,16 @@ export class Workspace {
     }
 
     initCanvas(): void {
-        this.canvas = new Canvas(this.canvasRef.current, {
+        const canvasElement =
+            this.canvasRef.current;
+
+        if (!canvasElement) {
+            throw new Error(
+                "Canvas element is not available"
+            );
+        }
+
+        this.canvas = new Canvas(canvasElement, {
             fireRightClick: true,
             stopContextMenu: true,
             centeredRotation: true,

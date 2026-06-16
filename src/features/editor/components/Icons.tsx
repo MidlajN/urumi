@@ -3,6 +3,11 @@
 import type { SVGProps } from "react";
 import type { JSX } from "react/jsx-runtime";
 
+type SizedSvgProps =
+  JSX.IntrinsicAttributes &
+  SVGProps<SVGSVGElement> & {
+    size?: number | string;
+  };
 
 // ------------ Logo ------------
 export const PlotLogo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
@@ -261,7 +266,7 @@ export const UngroupIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElem
 )
 
 // Tob Bar Icons
-export const ImportIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
+export const ImportIcon = (props: SizedSvgProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -280,7 +285,7 @@ export const ImportIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGEleme
   </svg>
 );
 
-export const HorizontalRect = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
+export const HorizontalRect = (props: SizedSvgProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -297,7 +302,7 @@ export const HorizontalRect = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGE
   </svg>
 );
 
-export const VerticalRect = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
+export const VerticalRect = (props: SizedSvgProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}
@@ -331,7 +336,7 @@ export const TextCursorIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGE
 );
 
 
-export const ShrinkIcon = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
+export const ShrinkIcon = (props: SizedSvgProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={ props.size}

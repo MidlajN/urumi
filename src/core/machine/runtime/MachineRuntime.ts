@@ -1,6 +1,9 @@
 import { CommandQueue }
 from '../queue/CommandQueue'
 
+import type { QueuedCommand }
+from '../queue/types'
+
 import { SerialDriver }
 from '../webserial/SerialDriver'
 
@@ -103,7 +106,7 @@ export class MachineRuntime {
 
 
 
-    private sendCommand = async (command) => {
+    private sendCommand = async (command: QueuedCommand) => {
         const store = useMachineStore.getState()
 
         store.setCurrentCommand(

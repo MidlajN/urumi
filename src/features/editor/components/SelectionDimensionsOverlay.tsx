@@ -110,7 +110,7 @@ function DimensionInput({
                 border-zinc-300
                 bg-white
                 px-2
-                text-[12px]
+                text-[11px]
                 font-semibold
                 text-zinc-900
                 shadow-sm
@@ -315,7 +315,7 @@ export default function SelectionDimensionsOverlay({
                         viewport.left,
                     top:
                         widthTop +
-                        17,
+                        12,
                     width:
                         viewport.width
                 }}
@@ -333,7 +333,7 @@ export default function SelectionDimensionsOverlay({
                         viewport.width /
                             2,
                     top:
-                        widthTop
+                        widthTop - 4
                 }}
             >
                 <DimensionInput

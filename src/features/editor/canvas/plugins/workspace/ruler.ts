@@ -56,8 +56,6 @@ type RulerOptions = {
 
 export default class CanvasRuler {
     private canvas: Canvas;
-    private enabled: boolean;
-    private workspace: Rect;
     private objectBox: TBBox | null = null;
 
     private option: RulerOptions = {
@@ -77,10 +75,8 @@ export default class CanvasRuler {
         },
     };
 
-    constructor(fabricCanvas: Canvas, workspace: Rect) {
+    constructor(fabricCanvas: Canvas, _workspace: Rect) {
         this.canvas = fabricCanvas;
-        this.workspace = workspace;
-        this.enabled = false;
     }
 
     rulerEnable(): void {

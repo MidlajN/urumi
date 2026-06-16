@@ -5,6 +5,7 @@ import {
 } from "react";
 import {
     Point,
+    util,
     type Canvas,
     type FabricObject
 } from "fabric";
@@ -39,6 +40,32 @@ export type SelectionGeometryPatch = Partial<
 
 const MIN_DIMENSION =
     1;
+
+const DEFAULT_SCENE_UNITS_PER_MM =
+    96 /
+    25.4;
+
+const SCENE_UNITS_PER_MM =
+    typeof util.parseUnit ===
+    "function"
+        ? util.parseUnit(
+            "1mm"
+        )
+        : DEFAULT_SCENE_UNITS_PER_MM;
+
+function sceneToMm(
+    value: number
+) {
+    return value /
+        SCENE_UNITS_PER_MM;
+}
+
+function mmToScene(
+    value: number
+) {
+    return value *
+        SCENE_UNITS_PER_MM;
+}
 
 function toViewportRect(
     rect: ViewportRect,
@@ -129,13 +156,21 @@ function readSelectionGeometry(
     return {
         object,
         x:
-            bounds.left,
+            sceneToMm(
+                bounds.left
+            ),
         y:
-            bounds.top,
+            sceneToMm(
+                bounds.top
+            ),
         width:
-            object.getScaledWidth(),
+            sceneToMm(
+                object.getScaledWidth()
+            ),
         height:
-            object.getScaledHeight(),
+            sceneToMm(
+                object.getScaledHeight()
+            ),
         rotation:
             object.angle ??
             0,
@@ -392,6 +427,11 @@ export function useSelectionGeometry(
                 nextWidth >
                     MIN_DIMENSION
             ) {
+                const targetWidth =
+                    mmToScene(
+                        nextWidth
+                    );
+
                 const currentWidth =
                     object.getScaledWidth();
 
@@ -403,7 +443,7 @@ export function useSelectionGeometry(
                         scaleX:
                             (object.scaleX ??
                                 1) *
-                            (nextWidth /
+                            (targetWidth /
                                 currentWidth)
                     });
                 }
@@ -415,6 +455,11 @@ export function useSelectionGeometry(
                 nextHeight >
                     MIN_DIMENSION
             ) {
+                const targetHeight =
+                    mmToScene(
+                        nextHeight
+                    );
+
                 const currentHeight =
                     object.getScaledHeight();
 
@@ -426,7 +471,7 @@ export function useSelectionGeometry(
                         scaleY:
                             (object.scaleY ??
                                 1) *
-                            (nextHeight /
+                            (targetHeight /
                                 currentHeight)
                     });
                 }
@@ -461,18 +506,32 @@ export function useSelectionGeometry(
                 const bounds =
                     object.getBoundingRect();
 
+                const targetX =
+                    nextX ===
+                    undefined
+                        ? bounds.left
+                        : mmToScene(
+                            nextX
+                        );
+
+                const targetY =
+                    nextY ===
+                    undefined
+                        ? bounds.top
+                        : mmToScene(
+                            nextY
+                        );
+
                 object.set({
                     left:
                         (object.left ??
                             0) +
-                        (nextX ??
-                            bounds.left) -
+                        targetX -
                         bounds.left,
                     top:
                         (object.top ??
                             0) +
-                        (nextY ??
-                            bounds.top) -
+                        targetY -
                         bounds.top
                 });
 

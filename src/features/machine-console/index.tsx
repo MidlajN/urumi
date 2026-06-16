@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
-  AlertTriangle,
   Pause,
   Play,
-  Plug,
   RotateCcw,
   Send,
   Trash2,
