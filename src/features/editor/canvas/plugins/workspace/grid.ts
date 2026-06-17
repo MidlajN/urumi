@@ -45,217 +45,161 @@ export default class CanvasGrid {
         );
     }
 
-    private getGridSpacing():
-        {
-            minor:
-                number;
-
-            major:
-                number;
-        } {
+    private getMajorMM(): number {
 
         const zoom =
-            this.canvas
-                .getZoom();
+            this.canvas.getZoom();
 
-        if (zoom < 0.08) {
-            return {
-                minor: 100,
-                major: 500
-            };
+        /**
+         * 1000x700 bed
+         * tuned for fit view
+         */
+
+        if (zoom < 0.4) {
+            return 100;
         }
 
-        if (zoom < 0.15) {
-            return {
-                minor: 50,
-                major: 250
-            };
-        }
-
-        if (zoom < 0.35) {
-            return {
-                minor: 25,
-                major: 100
-            };
-        }
-
-        if (zoom < 0.75) {
-            return {
-                minor: 10,
-                major: 50
-            };
+        if (zoom < 1) {
+            return 50;
         }
 
         if (zoom < 2) {
-            return {
-                minor: 5,
-                major: 25
-            };
+            return 25;
         }
 
-        return {
-            minor: 1,
-            major: 10
-        };
+        if (zoom < 4) {
+            return 10;
+        }
+
+        return 5;
     }
 
     private updateGrid =
         (): void => {
 
-        const spacing =
-            this
-                .getGridSpacing();
+            const zoom =
+                this.canvas
+                    .getZoom();
 
-        const minorSpacing =
-            util.parseUnit(
-                `${spacing.minor}mm`
-            );
+            /**
+             * Real-world grid
+             */
+            let majorMM = this.getMajorMM();
 
-        const majorSpacing =
-            util.parseUnit(
-                `${spacing.major}mm`
-            );
+            const majorSpacing =
+                util.parseUnit(
+                    `${majorMM}mm`
+                );
 
-        /**
-         * tile size
-         */
-        const tileSize =
-            majorSpacing;
+            /**
+             * EXACTLY 10 lines
+             */
+            const minorSpacing =
+                majorSpacing / 10;
 
-        const patternCanvas =
-            document.createElement(
-                "canvas"
-            );
+            const tileSize =
+                majorSpacing;
 
-        patternCanvas.width =
-            Math.ceil(
-                tileSize
-            );
+            const patternCanvas =
+                document.createElement(
+                    "canvas"
+                );
 
-        patternCanvas.height =
-            Math.ceil(
-                tileSize
-            );
+            patternCanvas.width =
+                Math.ceil(tileSize);
 
-        const ctx =
-            patternCanvas
-                .getContext(
+            patternCanvas.height =
+                Math.ceil(tileSize);
+
+            const ctx =
+                patternCanvas.getContext(
                     "2d"
                 );
 
-        if (!ctx) {
-            return;
-        }
+            if (!ctx) return;
 
-        /**
-         * white background
-         */
-        ctx.fillStyle =
-            "#ffffff";
-
-        ctx.fillRect(
-            0,
-            0,
-            tileSize,
-            tileSize
-        );
-
-        /**
-         * stable stroke
-         */
-        const zoom =
-            this.canvas
-                .getZoom();
-
-        ctx.lineWidth =
-            Math.max(
-                1 / zoom,
-                0.5
-            );
-
-        /**
-         * minor grid
-         */
-        ctx.beginPath();
-
-        ctx.strokeStyle =
-            "#f2f2f2";
-
-        for (
-            let x = 0;
-            x <= tileSize;
-            x += minorSpacing
-        ) {
-            ctx.moveTo(
-                x,
-                0
-            );
-
-            ctx.lineTo(
-                x,
+            ctx.clearRect(
+                0,
+                0,
+                tileSize,
                 tileSize
             );
-        }
 
-        for (
-            let y = 0;
-            y <= tileSize;
-            y += minorSpacing
-        ) {
-            ctx.moveTo(
-                0,
-                y
-            );
+            /**
+             * crisp stroke
+             */
+            ctx.lineWidth =
+                Math.max(
+                    0.8 / zoom,
+                    0.4
+                );
 
-            ctx.lineTo(
-                tileSize,
-                y
-            );
-        }
+            /**
+             * MINOR GRID
+             */
+            ctx.beginPath();
 
-        ctx.stroke();
+            ctx.strokeStyle =
+                "#F1F3F5";
 
-        /**
-         * major grid
-         */
-        ctx.beginPath();
+            for (
+                let x = minorSpacing;
+                x < tileSize;
+                x += minorSpacing
+            ) {
 
-        ctx.strokeStyle =
-            "#e5e5e5";
+                const px =
+                    Math.round(x) + 0.5;
 
-        ctx.moveTo(
-            0,
-            0
-        );
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, tileSize);
+            }
 
-        ctx.lineTo(
-            tileSize,
-            0
-        );
+            for (
+                let y = minorSpacing;
+                y < tileSize;
+                y += minorSpacing
+            ) {
 
-        ctx.moveTo(
-            0,
-            0
-        );
+                const py =
+                    Math.round(y) + 0.5;
 
-        ctx.lineTo(
-            0,
-            tileSize
-        );
+                ctx.moveTo(0, py);
+                ctx.lineTo(tileSize, py);
+            }
 
-        ctx.stroke();
+            ctx.stroke();
 
-        this.workspace.set(
-            "fill",
-            new Pattern({
-                source:
-                    patternCanvas,
+            /**
+             * MAJOR GRID
+             */
+            ctx.beginPath();
 
-                repeat:
-                    "repeat"
-            })
-        );
+            ctx.strokeStyle =
+                "#E4E8ED";
 
-        this.canvas.renderAll();
+            ctx.lineWidth =
+                Math.max(
+                    1.2 / zoom,
+                    0.7
+                );
+
+            ctx.moveTo(0.5, 0);
+            ctx.lineTo(0.5, tileSize);
+
+            ctx.moveTo(0, 0.5);
+            ctx.lineTo(tileSize, 0.5);
+
+            ctx.stroke();
+
+            this.workspace.set({
+                fill: new Pattern({
+                    source: patternCanvas,
+                    repeat: "repeat"
+                }),
+                backgroundColor: "#FFFFFF"
+            });
+
+            this.canvas.requestRenderAll();
     };
 }
