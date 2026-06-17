@@ -197,7 +197,7 @@ export default class CanvasGrid {
                     source: patternCanvas,
                     repeat: "repeat"
                 }),
-                backgroundColor: "#FFFFFF"
+                backgroundColor: "#FFFFFF",
             });
 
             this.canvas.requestRenderAll();

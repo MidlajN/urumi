@@ -10,6 +10,12 @@ import {
     type FabricObject,
     type TMat2D,
 } from "fabric";
+import type {
+    EditorSelectionMode
+} from "../store/editor.store";
+import {
+    isNodeEditableObject
+} from "../utils/nodeEditing";
 
 type ViewportRect = {
     left: number;
@@ -150,15 +156,6 @@ function isLineObject(object: FabricObject): object is Line {
     return object instanceof Line;
 }
 
-function isFreeDrawObject(object: FabricObject): object is Path {
-
-    return ( 
-        object instanceof Path &&
-        Boolean(object.isFreeDraw)
-    )
-}
-
-
 function isPathObject(object: FabricObject): object is Path {
 
     return object instanceof Path;
@@ -197,6 +194,34 @@ function getLineMeasurement(line: Line, canvas: Canvas): LineMeasurement {
         midpoint: scenePointToViewport(midpoint, canvas),
         angle,
     };
+}
+
+function getLineNodes(line: Line, canvas: Canvas): SelectionNode[] {
+    const {
+        start,
+        end
+    } = getLineScenePoints(
+        line
+    );
+
+    return [
+        {
+            id: "line:start",
+            index: 0,
+            viewport: scenePointToViewport(
+                start,
+                canvas
+            )
+        },
+        {
+            id: "line:end",
+            index: 1,
+            viewport: scenePointToViewport(
+                end,
+                canvas
+            )
+        }
+    ];
 }
 
 type SceneNode = {
@@ -319,7 +344,23 @@ function getNodeGeometry(object: FabricObject, canvas: Canvas) {
     };
 }
 
-function readSelectionGeometry(canvas: Canvas): SelectionGeometry | null {
+function getLineNodeId(
+    id: string
+) {
+    if (
+        id === "line:start" ||
+        id === "line:end"
+    ) {
+        return id;
+    }
+
+    return null;
+}
+
+function readSelectionGeometry(
+    canvas: Canvas,
+    selectionMode: EditorSelectionMode
+): SelectionGeometry | null {
     const object = canvas.getActiveObject();
 
     if (!object) {
@@ -328,11 +369,13 @@ function readSelectionGeometry(canvas: Canvas): SelectionGeometry | null {
 
     const bounds = object.getBoundingRect();
 
-    const mode: SelectionMode = isLineObject(object)
-        ? "line"
-        : (isPathObject(object) || isPolylineObject(object)) && !isFreeDrawObject(object)
-        ? "nodes"
-        : "bbox";
+    const mode: SelectionMode =
+        selectionMode === "node-edit" &&
+        isNodeEditableObject(object)
+            ? isLineObject(object)
+                ? "line"
+                : "nodes"
+            : "bbox";
 
     const nodeGeometry = mode === "nodes" ? getNodeGeometry(object, canvas) : null;
 
@@ -356,7 +399,10 @@ function readSelectionGeometry(canvas: Canvas): SelectionGeometry | null {
         viewportTransform: [...canvas.viewportTransform],
         line:
             mode === "line" ? getLineMeasurement(object as Line, canvas) : undefined,
-        nodes: nodeGeometry?.nodes,
+        nodes:
+            mode === "line"
+                ? getLineNodes(object as Line, canvas)
+                : nodeGeometry?.nodes,
         segments: nodeGeometry?.segments,
     };
 }
@@ -511,11 +557,76 @@ function movePathNode(
     return true;
 }
 
+function setLineScenePoints(
+    object: Line,
+    start: Point,
+    end: Point
+) {
+    object.set({
+        angle: 0,
+        scaleX: 1,
+        scaleY: 1,
+        skewX: 0,
+        skewY: 0,
+        flipX: false,
+        flipY: false,
+        x1: start.x,
+        y1: start.y,
+        x2: end.x,
+        y2: end.y,
+        dirty: true,
+    });
+
+    object.setCoords();
+}
+
+function moveLineNode(
+    object: Line,
+    nodeId: string,
+    scenePoint: Point
+) {
+    const lineNodeId =
+        getLineNodeId(
+            nodeId
+        );
+
+    if (!lineNodeId) {
+        return false;
+    }
+
+    const {
+        start,
+        end
+    } = getLineScenePoints(
+        object
+    );
+
+    setLineScenePoints(
+        object,
+        lineNodeId === "line:start"
+            ? scenePoint
+            : start,
+        lineNodeId === "line:end"
+            ? scenePoint
+            : end
+    );
+
+    return true;
+}
+
 function moveNodeToScenePoint(
     object: FabricObject,
     nodeId: string,
     scenePoint: Point,
 ) {
+    if (isLineObject(object)) {
+        return moveLineNode(
+            object,
+            nodeId,
+            scenePoint
+        );
+    }
+
     const parsed = parseNodeId(nodeId);
 
     if (!parsed) {
@@ -570,7 +681,10 @@ export function parseMeasurement(value: string) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function useSelectionGeometry(canvas: Canvas | null) {
+export function useSelectionGeometry(
+    canvas: Canvas | null,
+    selectionMode: EditorSelectionMode = "select"
+) {
 
     const [
         geometry, 
@@ -580,10 +694,10 @@ export function useSelectionGeometry(canvas: Canvas | null) {
     const syncGeometry = useCallback(() => {
 
         setGeometry(
-            canvas ? readSelectionGeometry(canvas) : null
+            canvas ? readSelectionGeometry(canvas, selectionMode) : null
         );
 
-    }, [canvas]);
+    }, [canvas, selectionMode]);
 
     useEffect(() => {
         if (!canvas) {
@@ -645,7 +759,7 @@ export function useSelectionGeometry(canvas: Canvas | null) {
             });
 
             canvas.requestRenderAll();
-            setGeometry(readSelectionGeometry(canvas));
+            setGeometry(readSelectionGeometry(canvas, selectionMode));
         };
 
         if (patch.node) {
@@ -792,9 +906,12 @@ export function useSelectionGeometry(canvas: Canvas | null) {
         });
 
         canvas.requestRenderAll();
-        setGeometry(readSelectionGeometry(canvas));
+        setGeometry(readSelectionGeometry(canvas, selectionMode));
 
-    },[canvas]);
+    },[
+        canvas,
+        selectionMode
+    ]);
 
     return {
         geometry,

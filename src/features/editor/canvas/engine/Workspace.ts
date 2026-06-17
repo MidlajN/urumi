@@ -173,6 +173,8 @@ export class Workspace {
 
             selectable: false,
             hasControls: false,
+
+            hoverCursor: "auto"
         });
 
         this.canvas.add(workspace);

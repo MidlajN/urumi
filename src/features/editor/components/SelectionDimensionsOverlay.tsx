@@ -11,9 +11,14 @@ import type {
     SelectionGeometry,
     SelectionGeometryPatch,
 } from "../hooks/useSelectionGeometry";
+import type {
+    EditorSelectionMode
+} from "../store/editor.store";
 
 type Props = {
     geometry: SelectionGeometry | null;
+    measurementsEnabled: boolean;
+    selectionMode: EditorSelectionMode;
     onCommit: (
         patch: SelectionGeometryPatch
     ) => void;
@@ -21,6 +26,8 @@ type Props = {
 
 export default function SelectionDimensionsOverlay({
     geometry,
+    measurementsEnabled,
+    selectionMode,
     onCommit,
 }: Props) {
     const overlayRef =
@@ -80,11 +87,19 @@ export default function SelectionDimensionsOverlay({
             }
             className="pointer-events-none absolute inset-0 z-20"
         >
-            {geometry.mode ===
+            {selectionMode ===
+                "node-edit" &&
+                geometry.mode ===
                 "line" && (
                 <LineOverlay
                     geometry={
                         geometry
+                    }
+                    overlayRef={
+                        overlayRef
+                    }
+                    measurementsEnabled={
+                        measurementsEnabled
                     }
                     onCommit={
                         onCommit
@@ -92,7 +107,9 @@ export default function SelectionDimensionsOverlay({
                 />
             )}
 
-            {geometry.mode ===
+            {selectionMode ===
+                "node-edit" &&
+                geometry.mode ===
                 "nodes" && (
                 <NodesOverlay
                     geometry={
@@ -101,13 +118,19 @@ export default function SelectionDimensionsOverlay({
                     overlayRef={
                         overlayRef
                     }
+                    measurementsEnabled={
+                        measurementsEnabled
+                    }
                     onCommit={
                         onCommit
                     }
                 />
             )}
 
-            {geometry.mode ===
+            {selectionMode !==
+                "node-edit" &&
+                measurementsEnabled &&
+                geometry.mode ===
                 "bbox" && (
                 <BboxOverlay
                     geometry={

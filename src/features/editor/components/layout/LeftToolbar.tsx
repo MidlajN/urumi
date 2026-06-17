@@ -11,6 +11,7 @@ import {
     Square,
     PenLine,
     Pencil,
+    SplinePointer,
     Upload
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ import {
     shapeTools
 } from "../toolbar/tool.config";
 import { useCanvas } from "../../canvas/CanvasProvider";
+import { isNodeEditableObject } from "../../utils/nodeEditing";
 
 
 type MenuType =
@@ -38,7 +40,7 @@ type MenuType =
 
 export default function LeftToolbar() {
 
-    const { workspace } = useCanvas()
+    const { canvas, workspace } = useCanvas()
     
     const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +53,10 @@ export default function LeftToolbar() {
     const {
         activeTool: tool,
         selectedShape: shape,
+        selectionMode,
         setTool,
-        setShape
+        setShape,
+        enterNodeEditMode
     } = useEditorStore();
 
     const clearMenus = () => {
@@ -146,6 +150,23 @@ export default function LeftToolbar() {
         setTool(selectedTool);
     };
 
+    const handleNodeEditSelect = () => {
+        clearMenus();
+
+        const object =
+            canvas?.getActiveObject();
+
+        if (!isNodeEditableObject(object)) {
+            setTool(
+                "select"
+            );
+            return;
+        }
+
+        enterNodeEditMode();
+        canvas?.requestRenderAll();
+    };
+
     return (
         <div
             ref={toolbarRef}
@@ -189,6 +210,32 @@ export default function LeftToolbar() {
                     handleToolSelect(
                         "select"
                     )
+                }
+            />
+
+            {/* EDIT NODES */}
+            <ToolButton
+                tool="node-edit"
+                label="Edit Nodes"
+                icon={
+                    SplinePointer
+                }
+                active={
+                    selectionMode ===
+                    "node-edit"
+                }
+                onMouseEnter={() => {
+
+                    if (
+                        !pinnedMenu
+                    ) {
+                        setHoveredMenu(
+                            null
+                        );
+                    }
+                }}
+                onClick={
+                    handleNodeEditSelect
                 }
             />
 

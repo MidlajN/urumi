@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DragIcon, ResetIcon, ZoomIn, ZoomOut } from "@/features/editor/components/Icons"
 import { motion } from 'framer-motion'
+import type { FabricObject } from 'fabric'
 
 import { useEditorSetup } from '../hooks/useEditorSetup'
 import { useCanvas } from '../canvas/CanvasProvider'
@@ -8,6 +9,19 @@ import { useSelectionGeometry } from '../hooks/useSelectionGeometry'
 import SelectionDimensionsOverlay from './SelectionDimensionsOverlay'
 import { Redo, Ruler, Undo } from 'lucide-react'
 import { useEditorStore } from '../store/editor.store'
+import { isNodeEditableObject } from '../utils/nodeEditing'
+
+type NodeEditControlState = Pick<
+    FabricObject,
+    "hasControls" |
+    "hasBorders" |
+    "lockMovementX" |
+    "lockMovementY"
+>;
+
+type FabricTargetEvent = {
+    target?: FabricObject | null;
+};
 
 
 export default function EditorCanvas() {
@@ -15,10 +29,125 @@ export default function EditorCanvas() {
     const { containerRef, canvasRef, canvas, toolRef } = useCanvas()
 
     const dimensionsOverlayEnabled = useEditorStore((state) => state.dimensionsOverlayEnabled)
+    const selectionMode = useEditorStore((state) => state.selectionMode)
+    const enterNodeEditMode = useEditorStore((state) => state.enterNodeEditMode)
+    const exitNodeEditMode = useEditorStore((state) => state.exitNodeEditMode)
 
     useEditorSetup({ canvas, toolRef })
 
-    const { geometry, updateGeometry } = useSelectionGeometry(canvas)
+    const { geometry, updateGeometry } = useSelectionGeometry(canvas, selectionMode)
+
+    const nodeEditObjectRef = useRef<FabricObject | null>(null)
+    const nodeEditControlStateRef = useRef<NodeEditControlState | null>(null)
+
+    const restoreNodeEditControls = useCallback(() => {
+        const object = nodeEditObjectRef.current
+        const controls = nodeEditControlStateRef.current
+
+        if (object && controls) {
+            object.set(controls)
+            object.setCoords()
+            canvas?.requestRenderAll()
+        }
+
+        nodeEditObjectRef.current = null
+        nodeEditControlStateRef.current = null
+    }, [canvas])
+
+    useEffect(() => {
+        if (!canvas) return
+
+        const handleDoubleClick = (event: FabricTargetEvent) => {
+            const target =
+                event.target ??
+                canvas.getActiveObject()
+
+            if (!isNodeEditableObject(target)) {
+                return
+            }
+
+            canvas.setActiveObject(target)
+            enterNodeEditMode()
+            canvas.requestRenderAll()
+        }
+
+        const handleSelectionCleared = () => {
+            exitNodeEditMode()
+        }
+
+        const ensureNodeEditableSelection = () => {
+            if (
+                selectionMode === "node-edit" &&
+                !isNodeEditableObject(canvas.getActiveObject())
+            ) {
+                exitNodeEditMode()
+            }
+        }
+
+        canvas.on("mouse:dblclick", handleDoubleClick)
+        canvas.on("selection:cleared", handleSelectionCleared)
+        canvas.on("selection:created", ensureNodeEditableSelection)
+        canvas.on("selection:updated", ensureNodeEditableSelection)
+
+        return () => {
+            canvas.off("mouse:dblclick", handleDoubleClick)
+            canvas.off("selection:cleared", handleSelectionCleared)
+            canvas.off("selection:created", ensureNodeEditableSelection)
+            canvas.off("selection:updated", ensureNodeEditableSelection)
+        }
+    }, [
+        canvas,
+        enterNodeEditMode,
+        exitNodeEditMode,
+        selectionMode
+    ])
+
+    useEffect(() => {
+        const object =
+            geometry?.object ??
+            null
+
+        if (
+            selectionMode !== "node-edit" ||
+            !isNodeEditableObject(object)
+        ) {
+            restoreNodeEditControls()
+            return
+        }
+
+        if (
+            nodeEditObjectRef.current &&
+            nodeEditObjectRef.current !== object
+        ) {
+            restoreNodeEditControls()
+        }
+
+        if (!nodeEditObjectRef.current) {
+            nodeEditObjectRef.current = object
+            nodeEditControlStateRef.current = {
+                hasControls: object.hasControls,
+                hasBorders: object.hasBorders,
+                lockMovementX: object.lockMovementX,
+                lockMovementY: object.lockMovementY
+            }
+        }
+
+        object.set({
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+        })
+        object.setCoords()
+        canvas?.requestRenderAll()
+
+        return restoreNodeEditControls
+    }, [
+        canvas,
+        geometry?.object,
+        restoreNodeEditControls,
+        selectionMode
+    ])
 
     return (
         <div
@@ -26,19 +155,19 @@ export default function EditorCanvas() {
             className="relative w-full h-full"
         >
             <canvas ref={canvasRef} />
-            {dimensionsOverlayEnabled && (
-                <SelectionDimensionsOverlay
-                    geometry={geometry}
-                    onCommit={updateGeometry}
-                />
-            )}
+            <SelectionDimensionsOverlay
+                geometry={geometry}
+                measurementsEnabled={
+                    dimensionsOverlayEnabled
+                }
+                selectionMode={selectionMode}
+                onCommit={updateGeometry}
+            />
             <BottomNav />
         </div>
     )
 }
 
-
-/* eslint-disable react/prop-types */
 const BottomNav = () => {
     const { workspace } = useCanvas();
     const [ dragMode, setDragMode ] = useState(workspace?.getDragMode() ?? false);

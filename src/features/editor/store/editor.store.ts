@@ -13,6 +13,10 @@ export type ShapeType =
     | "triangle"
     | "polygon";
 
+export type EditorSelectionMode =
+    | "select"
+    | "node-edit";
+
 export const OPERATION_COLORS = [
     {
         id: "cut",
@@ -44,10 +48,19 @@ type EditorStore = {
     fontFamily: string;
     fontSize: number;
     dimensionsOverlayEnabled: boolean;
+    selectionMode: EditorSelectionMode;
 
     setTool: (
         tool: ToolType
     ) => void;
+
+    setSelectionMode: (
+        mode: EditorSelectionMode
+    ) => void;
+
+    enterNodeEditMode: () => void;
+
+    exitNodeEditMode: () => void;
 
     setShape: (
         shape: ShapeType
@@ -77,10 +90,30 @@ export const useEditorStore =
         fontFamily: "BobaMilky",
         fontSize: 40,
         dimensionsOverlayEnabled: true,
+        selectionMode: "select",
 
         setTool: (tool) =>
             set({
-                activeTool: tool
+                activeTool: tool,
+                selectionMode: "select"
+            }),
+
+        setSelectionMode: (
+            selectionMode
+        ) =>
+            set({
+                selectionMode
+            }),
+
+        enterNodeEditMode: () =>
+            set({
+                activeTool: "select",
+                selectionMode: "node-edit"
+            }),
+
+        exitNodeEditMode: () =>
+            set({
+                selectionMode: "select"
             }),
 
         setShape: (shape) =>

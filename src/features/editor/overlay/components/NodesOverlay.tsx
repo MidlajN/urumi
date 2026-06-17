@@ -6,6 +6,9 @@ import type {
     SelectionGeometry,
     SelectionSegment,
 } from "../types";
+import {
+    getSegmentMeasurementVisibility
+} from "../utils/measurementVisibility";
 
 function SegmentMeasurement({
     segment,
@@ -14,6 +17,12 @@ function SegmentMeasurement({
     segment: SelectionSegment;
     onCommit: OverlayCommit;
 }) {
+    const visibility =
+        getSegmentMeasurementVisibility(
+            segment.start,
+            segment.end
+        );
+
     return (
         <MeasurementGuide
             ariaLabel="Segment length"
@@ -25,6 +34,9 @@ function SegmentMeasurement({
             }
             value={
                 segment.length
+            }
+            visibility={
+                visibility
             }
             side={1}
             onCommit={(length) =>
@@ -43,10 +55,12 @@ function SegmentMeasurement({
 export default function NodesOverlay({
     geometry,
     overlayRef,
+    measurementsEnabled,
     onCommit,
 }: {
     geometry: SelectionGeometry;
     overlayRef: OverlayRef;
+    measurementsEnabled: boolean;
     onCommit: OverlayCommit;
 }) {
     const segments =
@@ -59,7 +73,7 @@ export default function NodesOverlay({
 
     return (
         <>
-            {segments.map(
+            {measurementsEnabled && segments.map(
                 (
                     segment
                 ) => (

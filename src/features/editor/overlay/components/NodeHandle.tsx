@@ -79,8 +79,8 @@ export default function NodeHandle({
             className="
                 pointer-events-auto
                 absolute
-                h-3
-                w-3
+                h-2
+                w-2
                 -translate-x-1/2
                 -translate-y-1/2
                 rounded-full
@@ -89,7 +89,7 @@ export default function NodeHandle({
                 bg-white
                 shadow-sm
                 outline-none
-                hover:bg-cyan-100
+                hover:bg-zinc-900
                 focus-visible:ring-2
                 focus-visible:ring-cyan-400
             "

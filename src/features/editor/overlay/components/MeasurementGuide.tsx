@@ -8,6 +8,12 @@ import {
     lineStyle,
     MEASUREMENT_OFFSET,
 } from "../utils/measurement";
+import type {
+    MeasurementVisibility
+} from "../utils/measurementVisibility";
+import {
+    VISIBLE_MEASUREMENT
+} from "../utils/measurementVisibility";
 
 export default function MeasurementGuide({
     start,
@@ -16,6 +22,7 @@ export default function MeasurementGuide({
     ariaLabel,
     side = 1,
     offset = MEASUREMENT_OFFSET,
+    visibility = VISIBLE_MEASUREMENT,
     onCommit,
 }: {
     start: ViewportPoint;
@@ -24,6 +31,7 @@ export default function MeasurementGuide({
     ariaLabel: string;
     side?: 1 | -1;
     offset?: number;
+    visibility?: MeasurementVisibility;
     onCommit: MeasurementCommit;
 }) {
     const guide =
@@ -33,6 +41,10 @@ export default function MeasurementGuide({
             side,
             offset,
         });
+
+    if (!visibility.showGuide) {
+        return null;
+    }
 
     return (
         <>
@@ -76,32 +88,34 @@ export default function MeasurementGuide({
                 }
             />
 
-            <div
-                className="
-                    pointer-events-auto
-                    absolute
-                "
-                style={{
-                    left:
-                        guide.label.point.x,
-                    top:
-                        guide.label.point.y,
-                    transform:
-                        `translate(-50%, -50%) rotate(${guide.label.angle}deg)`,
-                }}
-            >
-                <DimensionInput
-                    ariaLabel={
-                        ariaLabel
-                    }
-                    value={
-                        value
-                    }
-                    onCommit={
-                        onCommit
-                    }
-                />
-            </div>
+            {visibility.showLabel && (
+                <div
+                    className="
+                        pointer-events-auto
+                        absolute
+                    "
+                    style={{
+                        left:
+                            guide.label.point.x,
+                        top:
+                            guide.label.point.y,
+                        transform:
+                            `translate(-50%, -50%) rotate(${guide.label.angle}deg)`,
+                    }}
+                >
+                    <DimensionInput
+                        ariaLabel={
+                            ariaLabel
+                        }
+                        value={
+                            value
+                        }
+                        onCommit={
+                            onCommit
+                        }
+                    />
+                </div>
+            )}
         </>
     );
 }

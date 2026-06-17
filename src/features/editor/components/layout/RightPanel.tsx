@@ -589,11 +589,20 @@ function GeometryGrid() {
         canvas
     } = useCanvas();
 
+    const selectionMode =
+        useEditorStore(
+            (
+                state
+            ) =>
+                state.selectionMode
+        );
+
     const {
         geometry,
         updateGeometry
     } = useSelectionGeometry(
-        canvas
+        canvas,
+        selectionMode
     );
 
     const disabled =
