@@ -15,7 +15,11 @@ export const setFabricDefaults = (): void => {
   FabricObject.ownDefaults.borderOpacityWhenMoving = 1;
   FabricObject.ownDefaults.cornerStrokeColor = '#0E98FC';
   FabricObject.ownDefaults.borderColor = '#43cad4'
-  FabricObject.customProperties = ['name'];
+  FabricObject.customProperties = [
+    'id',
+    'name',
+    'isFreeDraw'
+  ];
 
   FabricObject.ownDefaults.originY = 'top'
   FabricObject.ownDefaults.originX = 'left'

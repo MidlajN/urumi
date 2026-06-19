@@ -5,6 +5,14 @@ import type {
     SelectionNode,
 } from "../types";
 import { viewportPointerToScene } from "../utils/viewport";
+import { useEditorStore } from "../../store/editor.store";
+import {
+    useCanvas
+} from "../../canvas/CanvasProvider";
+import {
+    SnapFeedback,
+    getSnappedPoint
+} from "../../geometry/snapEngine";
 
 export default function NodeHandle({
     node,
@@ -17,12 +25,47 @@ export default function NodeHandle({
     overlayRef: OverlayRef;
     onCommit: OverlayCommit;
 }) {
+    const {
+        canvas
+    } = useCanvas();
+
+    const activeNodeId =
+        useEditorStore(
+            (
+                state
+            ) =>
+                state.activeNodeId
+        );
+
+    const setActiveNodeId =
+        useEditorStore(
+            (
+                state
+            ) =>
+                state.setActiveNodeId
+        );
+
+    const active =
+        activeNodeId ===
+        node.id;
+
     const handlePointerDown =
         (
             event: React.PointerEvent<HTMLButtonElement>
         ) => {
             event.preventDefault();
             event.stopPropagation();
+
+            setActiveNodeId(
+                node.id
+            );
+
+            const snapFeedback =
+                canvas
+                    ? new SnapFeedback(
+                        canvas
+                    )
+                    : null;
 
             const move =
                 (
@@ -39,20 +82,57 @@ export default function NodeHandle({
                         return;
                     }
 
+                    const snapped =
+                        canvas &&
+                        node.role !==
+                            "handle-in" &&
+                        node.role !==
+                            "handle-out"
+                            ? getSnappedPoint(
+                                scenePoint,
+                                {
+                                    canvas,
+                                    context:
+                                        "NODE_EDIT",
+                                    excludeNodeIds:
+                                        [
+                                            node.id
+                                        ]
+                                }
+                            )
+                            : null;
+
+                    const commitPoint =
+                        snapped?.point ??
+                        scenePoint;
+
                     onCommit({
                         node: {
                             id:
                                 node.id,
                             x:
-                                scenePoint.x,
+                                commitPoint.x,
                             y:
-                                scenePoint.y,
+                                commitPoint.y,
+                            altKey:
+                                pointerEvent.altKey,
+                            shiftKey:
+                                pointerEvent.shiftKey,
                         },
                     });
+
+                    if (snapped) {
+                        snapFeedback?.update(
+                            snapped
+                        );
+                    }
                 };
 
             const up =
                 () => {
+                    snapFeedback?.clear();
+                    snapFeedback?.destroy();
+
                     window.removeEventListener(
                         "pointermove",
                         move
@@ -71,6 +151,28 @@ export default function NodeHandle({
                 "pointerup",
                 up
             );
+        };
+
+    const handleDoubleClick =
+        (
+            event: React.MouseEvent<HTMLButtonElement>
+        ) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (
+                node.role === "handle-in" ||
+                node.role === "handle-out"
+            ) {
+                return;
+            }
+
+            onCommit({
+                toggleNodeType: {
+                    id:
+                        node.id
+                }
+            });
         };
 
     return (
@@ -98,9 +200,20 @@ export default function NodeHandle({
                     node.viewport.x,
                 top:
                     node.viewport.y,
+                backgroundColor:
+                    active
+                        ? "#0891b2"
+                        : "#ffffff",
+                borderColor:
+                    active
+                        ? "#0891b2"
+                        : "#18181b",
             }}
             onPointerDown={
                 handlePointerDown
+            }
+            onDoubleClick={
+                handleDoubleClick
             }
         />
     );

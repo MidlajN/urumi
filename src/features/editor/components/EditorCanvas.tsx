@@ -8,7 +8,10 @@ import { useCanvas } from '../canvas/CanvasProvider'
 import { useSelectionGeometry } from '../hooks/useSelectionGeometry'
 import SelectionDimensionsOverlay from './SelectionDimensionsOverlay'
 import { Redo, Ruler, Undo } from 'lucide-react'
-import { useEditorStore } from '../store/editor.store'
+import {
+    useEditorStore,
+    type EditorInteractionMode
+} from '../store/editor.store'
 import { isNodeEditableObject } from '../utils/nodeEditing'
 
 type NodeEditControlState = Pick<
@@ -23,6 +26,43 @@ type FabricTargetEvent = {
     target?: FabricObject | null;
 };
 
+type FabricTransformEvent = {
+    target?: FabricObject | null;
+};
+
+const NODE_EDIT_TRANSFORM_SUPPRESSION_MS =
+    400;
+
+function getObjectId(
+    object: FabricObject | null | undefined
+) {
+    return object?.id ??
+        object?.name ??
+        null
+}
+
+function canEnterNodeEditFromMode(
+    interactionMode: EditorInteractionMode,
+    lastObjectTransformEndedAt: number | null
+) {
+    const transformJustEnded =
+        lastObjectTransformEndedAt !== null &&
+        performance.now() -
+            lastObjectTransformEndedAt <
+            NODE_EDIT_TRANSFORM_SUPPRESSION_MS;
+
+    if (transformJustEnded) {
+        return false;
+    }
+
+    return (
+        interactionMode === 'idle' ||
+        interactionMode === 'selecting' ||
+        interactionMode === 'object-selected' ||
+        interactionMode === 'node-editing'
+    )
+}
+
 
 export default function EditorCanvas() {
 
@@ -30,8 +70,13 @@ export default function EditorCanvas() {
 
     const dimensionsOverlayEnabled = useEditorStore((state) => state.dimensionsOverlayEnabled)
     const selectionMode = useEditorStore((state) => state.selectionMode)
+    const activeTool = useEditorStore((state) => state.activeTool)
     const enterNodeEditMode = useEditorStore((state) => state.enterNodeEditMode)
     const exitNodeEditMode = useEditorStore((state) => state.exitNodeEditMode)
+    const setInteractionMode = useEditorStore((state) => state.setInteractionMode)
+    const setActiveObjectId = useEditorStore((state) => state.setActiveObjectId)
+    const setActiveNodeId = useEditorStore((state) => state.setActiveNodeId)
+    const setLastObjectTransformEndedAt = useEditorStore((state) => state.setLastObjectTransformEndedAt)
 
     useEditorSetup({ canvas, toolRef })
 
@@ -59,46 +104,172 @@ export default function EditorCanvas() {
 
         const handleDoubleClick = (event: FabricTargetEvent) => {
             const target =
-                event.target ??
-                canvas.getActiveObject()
+                event.target
 
-            if (!isNodeEditableObject(target)) {
+            const editorState =
+                useEditorStore.getState()
+
+            if (
+                editorState.activeTool !== "select" ||
+                editorState.selectionMode !== "select" ||
+                !canEnterNodeEditFromMode(
+                    editorState.interactionMode,
+                    editorState.lastObjectTransformEndedAt
+                ) ||
+                !isNodeEditableObject(target)
+            ) {
                 return
             }
 
             canvas.setActiveObject(target)
-            enterNodeEditMode()
+            enterNodeEditMode(
+                getObjectId(target)
+            )
             canvas.requestRenderAll()
         }
 
         const handleSelectionCleared = () => {
-            exitNodeEditMode()
+            setActiveObjectId(null)
+            setActiveNodeId(null)
+
+            if (selectionMode === 'node-edit') {
+                exitNodeEditMode()
+                return
+            }
+
+            setInteractionMode('idle')
         }
 
         const ensureNodeEditableSelection = () => {
+            const activeObject =
+                canvas.getActiveObject()
+
+            setActiveNodeId(null)
+
+            setActiveObjectId(
+                getObjectId(
+                    activeObject
+                )
+            )
+
             if (
                 selectionMode === "node-edit" &&
-                !isNodeEditableObject(canvas.getActiveObject())
+                !isNodeEditableObject(activeObject)
             ) {
                 exitNodeEditMode()
+                return
+            }
+
+            if (
+                selectionMode !== "node-edit" &&
+                activeTool === "select"
+            ) {
+                setInteractionMode(
+                    activeObject
+                        ? "object-selected"
+                        : "idle"
+                )
+            }
+        }
+
+        const handleMouseDown = () => {
+            if (
+                activeTool === "select" &&
+                selectionMode !== "node-edit"
+            ) {
+                setInteractionMode("selecting")
+            }
+        }
+
+        const handleObjectMoving = (
+            event: FabricTransformEvent
+        ) => {
+            setActiveObjectId(
+                getObjectId(event.target)
+            )
+
+            if (
+                selectionMode !== "node-edit"
+            ) {
+                setInteractionMode("object-dragging")
+            }
+        }
+
+        const handleObjectTransforming = (
+            event: FabricTransformEvent
+        ) => {
+            setActiveObjectId(
+                getObjectId(event.target)
+            )
+
+            if (
+                selectionMode !== "node-edit"
+            ) {
+                setInteractionMode("object-transforming")
+            }
+        }
+
+        const handleObjectModified = (
+            event: FabricTransformEvent
+        ) => {
+            const currentMode =
+                useEditorStore.getState()
+                    .interactionMode
+
+            if (
+                currentMode === "object-dragging" ||
+                currentMode === "object-transforming"
+            ) {
+                setLastObjectTransformEndedAt(
+                    performance.now()
+                )
+            }
+
+            setActiveObjectId(
+                getObjectId(
+                    event.target ??
+                    canvas.getActiveObject()
+                )
+            )
+
+            if (
+                selectionMode !== "node-edit" &&
+                activeTool === "select"
+            ) {
+                setInteractionMode("object-selected")
             }
         }
 
         canvas.on("mouse:dblclick", handleDoubleClick)
+        canvas.on("mouse:down", handleMouseDown)
         canvas.on("selection:cleared", handleSelectionCleared)
         canvas.on("selection:created", ensureNodeEditableSelection)
         canvas.on("selection:updated", ensureNodeEditableSelection)
+        canvas.on("object:moving", handleObjectMoving)
+        canvas.on("object:scaling", handleObjectTransforming)
+        canvas.on("object:rotating", handleObjectTransforming)
+        canvas.on("object:modified", handleObjectModified)
 
         return () => {
             canvas.off("mouse:dblclick", handleDoubleClick)
+            canvas.off("mouse:down", handleMouseDown)
             canvas.off("selection:cleared", handleSelectionCleared)
             canvas.off("selection:created", ensureNodeEditableSelection)
             canvas.off("selection:updated", ensureNodeEditableSelection)
+            canvas.off("object:moving", handleObjectMoving)
+            canvas.off("object:scaling", handleObjectTransforming)
+            canvas.off("object:rotating", handleObjectTransforming)
+            canvas.off("object:modified", handleObjectModified)
         }
     }, [
+        activeTool,
         canvas,
         enterNodeEditMode,
         exitNodeEditMode,
+        setActiveObjectId,
+        setActiveNodeId,
+        setLastObjectTransformEndedAt,
+        setInteractionMode,
         selectionMode
     ])
 

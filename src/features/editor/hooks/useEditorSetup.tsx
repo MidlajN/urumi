@@ -1,7 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 
 import {
-    Line,
     PencilBrush,
     Rect,
     Ellipse,
@@ -27,6 +26,34 @@ import {
     TriangleIcon,
     TextCursorIcon,
 } from "../components/Icons";
+import {
+    ANGLE_CONSTRAINT_INCREMENT_DEG
+} from "../geometry/snapConfig";
+import {
+    PathPreviewRenderer
+} from "../geometry/pathPreview";
+import {
+    SnapFeedback,
+    getSnappedPoint
+} from "../geometry/snapEngine";
+import {
+    constrainAngle,
+    createRafScheduler,
+    distance,
+} from "../geometry/geometryUtils";
+import type {
+    SnapResult,
+    SnapTarget
+} from "../geometry/types";
+import {
+    createFabricPathFromGeometry
+} from "../geometry/pathBuilder";
+import {
+    createCornerNode,
+    createSmoothNode,
+    type PathGeometry,
+    type PathNode
+} from "../geometry/pathModel";
 
 type Props = {
   canvas: Canvas | null;
@@ -198,7 +225,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         }
 
         // -------------------
-        // LINE
+        // PATH
         // -------------------
 
         if (activeTool === "line") {
@@ -206,84 +233,726 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
 
             commonSetup(`url(${customCursor}), auto`);
 
-            let line: Line | null = null;
+            const snapFeedback =
+                new SnapFeedback(
+                    canvas
+                );
 
-            let mouseDown = false;
+            const previewRenderer =
+                new PathPreviewRenderer(
+                    canvas,
+                    {
+                        stroke:
+                            strokeColor
+                    }
+                );
 
-            const mouseDownHandler = (event: any) => {
-                if (mouseDown) return;
-
-                const pointer = getScenePoint(event);
-
-                mouseDown = true;
-
-                line = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
-                    id: "added-line",
-
-                    stroke: strokeColor,
-
-                    strokeWidth: 2,
-
-                    selectable: false,
-                });
-
-                canvas.add(line);
+            let draftGeometry: PathGeometry = {
+                id:
+                    `path-${Date.now().toString(36)}`,
+                nodes:
+                    [],
+                closed:
+                    false
             };
 
-            const moveHandler = (event: any) => {
-                if (!mouseDown || !line) return;
+            let previewNode: PathNode | null =
+                null;
 
-                const pointer = getScenePoint(event);
+            let pointerDown:
+                | {
+                    nodeId: string;
+                    startPoint: Point;
+                    startClientX: number;
+                    startClientY: number;
+                    dragging: boolean;
+                }
+                | null =
+                null;
 
-                const nextPoint = {
-                    x: pointer.x,
-                    y: pointer.y,
+            let disposed =
+                false;
+
+            const createDrawingTargets =
+                () => {
+                    const targets: SnapTarget[] =
+                        [];
+
+                    draftGeometry.nodes
+                        .slice(
+                            0,
+                            -1
+                        )
+                        .forEach(
+                            (
+                                node
+                            ) => {
+                                targets.push({
+                                    id:
+                                        `drawing:endpoint:${node.id}`,
+                                    sourceId:
+                                        "drawing",
+                                    type:
+                                        "endpoint",
+                                    point:
+                                        new Point(
+                                            node.x,
+                                            node.y
+                                        ),
+                                    nodeId:
+                                        `geom-node:${node.id}`
+                                });
+                            }
+                        );
+
+                    return targets;
                 };
 
-                if (event.e.ctrlKey) {
-                    const deltaX = Math.abs(pointer.x - line.x1);
-
-                    const deltaY = Math.abs(pointer.y - line.y1);
-
-                    if (deltaY > deltaX) {
-                        nextPoint.x = line.x1;
-                    } else {
-                        nextPoint.y = line.y1;
+            const getShiftKey =
+                (
+                    event: {
+                        e: Event;
                     }
-                }
+                ) =>
+                    "shiftKey" in event.e &&
+                    Boolean(
+                        event.e.shiftKey
+                    );
 
-                line.set({
-                    x2: nextPoint.x,
-                    y2: nextPoint.y,
-                });
+            const resolvePoint =
+                (
+                    event: {
+                        e: Event;
+                        scenePoint?: Point;
+                    },
+                    anchor?: Point
+                ): SnapResult => {
+                    const rawPoint =
+                        event.scenePoint ??
+                        getScenePoint(
+                            event
+                        );
 
-                canvas.requestRenderAll();
-            };
+                    const constrainedPointer =
+                        anchor &&
+                        getShiftKey(
+                            event
+                        )
+                            ? constrainAngle(
+                                rawPoint,
+                                anchor,
+                                ANGLE_CONSTRAINT_INCREMENT_DEG
+                            )
+                            : rawPoint;
 
-            const upHandler = () => {
-                if (!line) return;
+                    const snapped =
+                        getSnappedPoint(
+                            constrainedPointer,
+                            {
+                                canvas,
+                                context:
+                                    "POLYLINE_DRAW",
+                                extraTargets:
+                                    createDrawingTargets(),
+                                allowedTargetTypes:
+                                    [
+                                        "endpoint"
+                                    ]
+                            }
+                        );
 
-                const isDot = Math.abs(line.x1 - line.x2) < 1 && Math.abs(line.y1 - line.y2) < 1;
+                    if (
+                        anchor &&
+                        getShiftKey(
+                            event
+                        )
+                    ) {
+                        const constrainedSnapped =
+                            constrainAngle(
+                                snapped.point,
+                                anchor,
+                                ANGLE_CONSTRAINT_INCREMENT_DEG
+                            );
 
-                if (isDot) {
-                    canvas.remove(line);
-                } else {
-                    finalizeCreatedObject(line);
-                }
+                        return {
+                            ...snapped,
+                            snapped:
+                                snapped.snapped &&
+                                distance(
+                                    snapped.point,
+                                    constrainedSnapped
+                                ) <
+                                    0.5,
+                            point:
+                                constrainedSnapped
+                        };
+                    }
 
-                mouseDown = false;
+                    return snapped;
+                };
 
-                line = null;
-            };
+            const syncPreview =
+                () => {
+                    previewRenderer.setGeometry(
+                        draftGeometry,
+                        previewNode
+                    );
+                };
 
-            canvas.on("mouse:down", mouseDownHandler);
+            const clearSession =
+                () => {
+                    draftGeometry = {
+                        id:
+                            `path-${Date.now().toString(36)}`,
+                        nodes:
+                            [],
+                        closed:
+                            false
+                    };
+                    previewNode =
+                        null;
+                    pointerDown =
+                        null;
+                    moveScheduler.cancel();
+                    previewRenderer.clear();
+                    snapFeedback.clear();
+                };
 
-            canvas.on("mouse:move", moveHandler);
+            const finishPath =
+                (
+                    changeTool = true
+                ) => {
+                    if (
+                        disposed
+                    ) {
+                        return;
+                    }
 
-            canvas.on("mouse:up", upHandler);
+                    const finalGeometry =
+                        {
+                            ...draftGeometry,
+                            nodes:
+                                draftGeometry.nodes.map(
+                                    (
+                                        node
+                                    ) => ({
+                                        ...node,
+                                        handleIn:
+                                            node.handleIn
+                                                ? {
+                                                    ...node.handleIn
+                                                }
+                                                : undefined,
+                                        handleOut:
+                                            node.handleOut
+                                                ? {
+                                                    ...node.handleOut
+                                                }
+                                                : undefined
+                                    })
+                                )
+                        };
+
+                    clearSession();
+
+                    if (
+                        finalGeometry.nodes.length >=
+                        2
+                    ) {
+                        const path =
+                            createFabricPathFromGeometry(
+                                finalGeometry,
+                                {
+                                    id:
+                                        "added-path",
+                                    name:
+                                        "geometry-path",
+                                    fill:
+                                        "transparent",
+                                    stroke:
+                                        strokeColor,
+                                    strokeWidth:
+                                        2,
+                                    selectable:
+                                        true
+                                }
+                            );
+
+                        canvas.add(
+                            path
+                        );
+                        canvas.setActiveObject(
+                            path
+                        );
+                        finalizeCreatedObject(
+                            path
+                        );
+                    }
+
+                    if (changeTool) {
+                        setTool(
+                            "select"
+                        );
+                    }
+                };
+
+            const cancelPath =
+                (
+                    changeTool = true
+                ) => {
+                    if (
+                        disposed
+                    ) {
+                        return;
+                    }
+
+                    clearSession();
+
+                    if (changeTool) {
+                        setTool(
+                            "select"
+                        );
+                    }
+                };
+
+            const recoverDrawingSession =
+                () => {
+                    if (
+                        draftGeometry.nodes.length >=
+                        2
+                    ) {
+                        finishPath();
+                        return;
+                    }
+
+                    cancelPath();
+                };
+
+            const getEventClientPoint =
+                (
+                    event: {
+                        e: Event;
+                    }
+                ) => {
+                    if (
+                        event.e instanceof MouseEvent ||
+                        event.e instanceof PointerEvent
+                    ) {
+                        return {
+                            x:
+                                event.e.clientX,
+                            y:
+                                event.e.clientY
+                        };
+                    }
+
+                    return {
+                        x:
+                            0,
+                        y:
+                            0
+                    };
+                };
+
+            const getLastNode =
+                () =>
+                    draftGeometry.nodes[
+                        draftGeometry.nodes.length -
+                            1
+                    ];
+
+            const updateNodeAsSmooth =
+                (
+                    nodeId: string,
+                    handlePoint: Point
+                ) => {
+                    draftGeometry = {
+                        ...draftGeometry,
+                        nodes:
+                            draftGeometry.nodes.map(
+                                (
+                                    node
+                                ) => {
+                                    if (
+                                        node.id !==
+                                        nodeId
+                                    ) {
+                                        return node;
+                                    }
+
+                                    return createSmoothNode(
+                                        new Point(
+                                            node.x,
+                                            node.y
+                                        ),
+                                        handlePoint
+                                    );
+                                }
+                            )
+                    };
+                };
+
+            const handleMoveFrame =
+                (
+                    event: {
+                        e: Event;
+                        scenePoint?: Point;
+                    }
+                ) => {
+                    if (
+                        disposed
+                    ) {
+                        return;
+                    }
+
+                    const anchor =
+                        getLastNode();
+
+                    if (!anchor) {
+                        const snapped =
+                            resolvePoint(
+                                event
+                            );
+
+                        snapFeedback.update(
+                            snapped
+                        );
+                        return;
+                    }
+
+                    if (pointerDown) {
+                        const clientPoint =
+                            getEventClientPoint(
+                                event
+                            );
+
+                        const dragDistance =
+                            Math.hypot(
+                                clientPoint.x -
+                                    pointerDown.startClientX,
+                                clientPoint.y -
+                                    pointerDown.startClientY
+                            );
+
+                        if (
+                            dragDistance >
+                            3
+                        ) {
+                            pointerDown.dragging =
+                                true;
+
+                            let handlePoint =
+                                getScenePoint(
+                                    event
+                                );
+
+                            if (
+                                getShiftKey(
+                                    event
+                                )
+                            ) {
+                                handlePoint =
+                                    constrainAngle(
+                                        handlePoint,
+                                        pointerDown.startPoint,
+                                        ANGLE_CONSTRAINT_INCREMENT_DEG
+                                    );
+                            }
+
+                            updateNodeAsSmooth(
+                                pointerDown.nodeId,
+                                handlePoint
+                            );
+                            syncPreview();
+                            return;
+                        }
+                    }
+
+                    const snapped =
+                        resolvePoint(
+                            event,
+                            new Point(
+                                anchor.x,
+                                anchor.y
+                            )
+                        );
+
+                    previewNode =
+                        createCornerNode(
+                            snapped.point
+                        );
+
+                    syncPreview();
+                    snapFeedback.update(
+                        snapped
+                    );
+                };
+
+            const moveScheduler =
+                createRafScheduler<{
+                    e: Event;
+                    scenePoint?: Point;
+                }>(
+                    handleMoveFrame
+                );
+
+            const commitNode =
+                (
+                    node: PathNode
+                ) => {
+                    draftGeometry = {
+                        ...draftGeometry,
+                        nodes: [
+                            ...draftGeometry.nodes,
+                            node
+                        ]
+                    };
+
+                    previewNode =
+                        null;
+
+                    syncPreview();
+                };
+
+            const mouseDownHandler =
+                (
+                    event: {
+                        e: Event;
+                        scenePoint?: Point;
+                    }
+                ) => {
+                    moveScheduler.cancel();
+
+                    const anchor =
+                        getLastNode();
+
+                    const snapped =
+                        resolvePoint(
+                            event,
+                            anchor
+                                ? new Point(
+                                    anchor.x,
+                                    anchor.y
+                                )
+                                : undefined
+                        );
+
+                    const nextPoint =
+                        snapped.point;
+
+                    const previousPoint =
+                        anchor;
+
+                    const firstNode =
+                        draftGeometry.nodes[0];
+
+                    if (
+                        firstNode &&
+                        draftGeometry.nodes.length >=
+                            2 &&
+                        snapped.targetId ===
+                            `drawing:endpoint:${firstNode.id}`
+                    ) {
+                        draftGeometry = {
+                            ...draftGeometry,
+                            closed:
+                                true
+                        };
+                        finishPath();
+                        return;
+                    }
+
+                    if (
+                        previousPoint &&
+                        distance(
+                            new Point(
+                                previousPoint.x,
+                                previousPoint.y
+                            ),
+                            nextPoint
+                        ) <
+                            0.5
+                    ) {
+                        return;
+                    }
+
+                    const node =
+                        createCornerNode(
+                            nextPoint
+                        );
+
+                    commitNode(
+                        node
+                    );
+
+                    const clientPoint =
+                        getEventClientPoint(
+                            event
+                        );
+
+                    pointerDown = {
+                        nodeId:
+                            node.id,
+                        startPoint:
+                            new Point(
+                                node.x,
+                                node.y
+                            ),
+                        startClientX:
+                            clientPoint.x,
+                        startClientY:
+                            clientPoint.y,
+                        dragging:
+                            false
+                    };
+
+                    snapFeedback.update(
+                        snapped
+                    );
+                };
+
+            const moveHandler =
+                (
+                    event: {
+                        e: Event;
+                        scenePoint?: Point;
+                    }
+                ) => {
+                    moveScheduler.schedule(
+                        event
+                    );
+                };
+
+            const windowPointerMoveHandler =
+                (
+                    event: PointerEvent
+                ) => {
+                    if (
+                        draftGeometry.nodes.length ===
+                        0
+                    ) {
+                        return;
+                    }
+
+                    moveScheduler.schedule({
+                        e:
+                            event
+                    });
+                };
+
+            const doubleClickHandler =
+                () => {
+                    finishPath();
+                };
+
+            const mouseUpHandler =
+                () => {
+                    pointerDown =
+                        null;
+                };
+
+            const keyHandler =
+                (
+                    event: KeyboardEvent
+                ) => {
+                    if (
+                        event.key !== "Enter" &&
+                        event.key !== "Escape"
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        draftGeometry.nodes.length >=
+                        2
+                    ) {
+                        event.preventDefault();
+                        finishPath();
+                        return;
+                    }
+
+                    cancelPath();
+                };
+
+            const blurHandler =
+                () => {
+                    recoverDrawingSession();
+                };
+
+            const visibilityHandler =
+                () => {
+                    if (
+                        document.visibilityState ===
+                        "hidden"
+                    ) {
+                        recoverDrawingSession();
+                    }
+                };
+
+            canvas.on(
+                "mouse:down",
+                mouseDownHandler
+            );
+            canvas.on(
+                "mouse:move",
+                moveHandler
+            );
+            canvas.on(
+                "mouse:up",
+                mouseUpHandler
+            );
+            canvas.on(
+                "mouse:dblclick",
+                doubleClickHandler
+            );
+            window.addEventListener(
+                "keydown",
+                keyHandler
+            );
+            window.addEventListener(
+                "pointermove",
+                windowPointerMoveHandler
+            );
+            window.addEventListener(
+                "blur",
+                blurHandler
+            );
+            document.addEventListener(
+                "visibilitychange",
+                visibilityHandler
+            );
 
             return () => {
-                resetCanvas(mouseDownHandler, moveHandler, upHandler);
+                disposed =
+                    true;
+                moveScheduler.cancel();
+                previewRenderer.destroy();
+                snapFeedback.destroy();
+                resetCanvas(
+                    mouseDownHandler,
+                    moveHandler,
+                    mouseUpHandler
+                );
+                canvas.off(
+                    "mouse:dblclick",
+                    doubleClickHandler
+                );
+                window.removeEventListener(
+                    "keydown",
+                    keyHandler
+                );
+                window.removeEventListener(
+                    "pointermove",
+                    windowPointerMoveHandler
+                );
+                window.removeEventListener(
+                    "blur",
+                    blurHandler
+                );
+                document.removeEventListener(
+                    "visibilitychange",
+                    visibilityHandler
+                );
                 URL.revokeObjectURL(customCursor);
             };
         }

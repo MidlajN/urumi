@@ -16,6 +16,25 @@ import type {
 import {
     isNodeEditableObject
 } from "../utils/nodeEditing";
+import {
+    ANGLE_CONSTRAINT_INCREMENT_DEG
+} from "../geometry/snapConfig";
+import {
+    applyGeometryToFabricPath
+} from "../geometry/pathBuilder";
+import {
+    getGeometryHandleInId,
+    getGeometryHandleOutId,
+    getGeometryNodeId,
+    getPathGeometry,
+    parseGeometryNodeId,
+    pointFromHandle,
+    type PathGeometry,
+    type PathNode
+} from "../geometry/pathModel";
+import {
+    constrainAngle
+} from "../geometry/geometryUtils";
 
 type ViewportRect = {
     left: number;
@@ -34,6 +53,8 @@ export type SelectionMode = "bbox" | "line" | "nodes";
 export type SelectionNode = {
     id: string;
     index: number;
+    role?: "node" | "handle-in" | "handle-out";
+    ownerNodeId?: string;
     viewport: ViewportPoint;
 };
 
@@ -77,10 +98,15 @@ type BaseGeometryPatch = Partial<
 
 export type SelectionGeometryPatch = BaseGeometryPatch & {
     length?: number;
+    toggleNodeType?: {
+        id: string;
+    };
     node?: {
         id: string;
         x: number;
         y: number;
+        altKey?: boolean;
+        shiftKey?: boolean;
     };
     segment?: {
         endNodeId: string;
@@ -246,6 +272,36 @@ function getPathPointIndex(command: unknown[]) {
 }
 
 function getPathSceneNodes(object: Path): SceneNode[] {
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    if (geometry) {
+        return geometry.nodes.map(
+            (
+                node,
+                index
+            ) => ({
+                id:
+                    getGeometryNodeId(
+                        node
+                    ),
+                index,
+                scene:
+                    objectLocalToScene(
+                        object,
+                        new Point(
+                            node.x -
+                                object.pathOffset.x,
+                            node.y -
+                                object.pathOffset.y
+                        )
+                    ),
+            })
+        );
+    }
+
     return object.path
         .map((command, commandIndex) => {
             if (command[0] === "Z" || command.length < 3) {
@@ -272,6 +328,73 @@ function getPathSceneNodes(object: Path): SceneNode[] {
             };
         })
         .filter((node): node is SceneNode => Boolean(node));
+}
+
+function getGeometryHandleSceneNodes(
+    object: FabricObject
+): SceneNode[] {
+    if (!isPathObject(object)) {
+        return [];
+    }
+
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    if (!geometry) {
+        return [];
+    }
+
+    return geometry.nodes.flatMap(
+        (
+            node,
+            index
+        ) => {
+            const handles: SceneNode[] =
+                [];
+
+            if (node.handleIn) {
+                handles.push({
+                    id:
+                        getGeometryHandleInId(
+                            node
+                        ),
+                    index,
+                    scene:
+                        objectLocalToScene(
+                            object,
+                            pointFromHandle(
+                                node.handleIn
+                            ).subtract(
+                                object.pathOffset
+                            )
+                        )
+                });
+            }
+
+            if (node.handleOut) {
+                handles.push({
+                    id:
+                        getGeometryHandleOutId(
+                            node
+                        ),
+                    index,
+                    scene:
+                        objectLocalToScene(
+                            object,
+                            pointFromHandle(
+                                node.handleOut
+                            ).subtract(
+                                object.pathOffset
+                            )
+                        )
+                });
+            }
+
+            return handles;
+        }
+    );
 }
 
 function getSceneNodes(object: FabricObject) {
@@ -301,11 +424,44 @@ function isClosedNodeObject(object: FabricObject) {
 function getNodeGeometry(object: FabricObject, canvas: Canvas) {
     const sceneNodes = getSceneNodes(object);
 
-    const nodes = sceneNodes.map((node) => ({
+    const handleNodes =
+        getGeometryHandleSceneNodes(
+            object
+        );
+
+    const nodes = [
+        ...sceneNodes.map((node) => ({
         id: node.id,
         index: node.index,
+        role: "node" as const,
         viewport: scenePointToViewport(node.scene, canvas),
-    }));
+        })),
+        ...handleNodes.map((node) => {
+            const parsed =
+                parseGeometryNodeId(
+                    node.id
+                );
+
+            return {
+                id:
+                    node.id,
+                index:
+                    node.index,
+                role:
+                    parsed?.kind ===
+                    "geom-handle-in"
+                        ? "handle-in" as const
+                        : "handle-out" as const,
+                ownerNodeId:
+                    parsed?.nodeId,
+                viewport:
+                    scenePointToViewport(
+                        node.scene,
+                        canvas
+                    )
+            };
+        })
+    ];
 
     const segments: SelectionSegment[] = [];
 
@@ -416,6 +572,15 @@ function cleanNumber(value: number | undefined) {
 }
 
 function parseNodeId(id: string) {
+    const geometryNode =
+        parseGeometryNodeId(
+            id
+        );
+
+    if (geometryNode) {
+        return geometryNode;
+    }
+
     const [kind, first, second] = id.split(":");
 
     if (kind === "poly") {
@@ -434,6 +599,382 @@ function parseNodeId(id: string) {
     }
 
     return null;
+}
+
+function geometryPointToScene(
+    object: Path,
+    point: {
+        x: number;
+        y: number;
+    }
+) {
+    return objectLocalToScene(
+        object,
+        new Point(
+            point.x -
+                object.pathOffset.x,
+            point.y -
+                object.pathOffset.y
+        )
+    );
+}
+
+function sceneToGeometryPoint(
+    object: Path,
+    point: Point
+) {
+    return sceneToObjectLocal(
+        object,
+        point
+    ).add(
+        object.pathOffset
+    );
+}
+
+function findGeometryAnchorNode(
+    geometry: PathGeometry,
+    excludedNodeId: string
+) {
+    return (
+        geometry.nodes.find(
+            (
+                node
+            ) =>
+                node.id !==
+                excludedNodeId
+        ) ??
+        geometry.nodes[0]
+    );
+}
+
+function applyGeometryMutation(
+    object: Path,
+    geometry: PathGeometry,
+    changedNodeId: string
+) {
+    const anchorBeforeNode =
+        findGeometryAnchorNode(
+            geometry,
+            changedNodeId
+        );
+
+    const anchorBefore =
+        anchorBeforeNode
+            ? geometryPointToScene(
+                object,
+                anchorBeforeNode
+            )
+            : null;
+
+    applyGeometryToFabricPath(
+        object,
+        geometry
+    );
+
+    if (anchorBeforeNode && anchorBefore) {
+        const nextGeometry =
+            getPathGeometry(
+                object
+            );
+
+        const anchorAfterNode =
+            nextGeometry?.nodes.find(
+                (
+                    node
+                ) =>
+                    node.id ===
+                    anchorBeforeNode.id
+            );
+
+        if (anchorAfterNode) {
+            const anchorAfter =
+                geometryPointToScene(
+                    object,
+                    anchorAfterNode
+                );
+
+            const diff =
+                anchorAfter.subtract(
+                    anchorBefore
+                );
+
+            object.set({
+                left:
+                    (
+                        object.left ??
+                        0
+                    ) - diff.x,
+                top:
+                    (
+                        object.top ??
+                        0
+                    ) - diff.y,
+                dirty:
+                    true
+            });
+            object.setCoords();
+        }
+    }
+}
+
+function mirrorHandle(
+    node: PathNode,
+    handle: Point
+) {
+    return {
+        x:
+            node.x -
+            (
+                handle.x -
+                node.x
+            ),
+        y:
+            node.y -
+            (
+                handle.y -
+                node.y
+            )
+    };
+}
+
+function moveGeometryPathNode(
+    object: Path,
+    nodeId: string,
+    scenePoint: Point,
+    modifiers: {
+        altKey?: boolean;
+        shiftKey?: boolean;
+    } = {}
+) {
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    const parsed =
+        parseGeometryNodeId(
+            nodeId
+        );
+
+    if (
+        !geometry ||
+        !parsed
+    ) {
+        return false;
+    }
+
+    const targetNode =
+        geometry.nodes.find(
+            (
+                node
+            ) =>
+                node.id ===
+                parsed.nodeId
+        );
+
+    if (!targetNode) {
+        return false;
+    }
+
+    if (
+        parsed.kind ===
+        "geom-node"
+    ) {
+        const nextPoint =
+            sceneToGeometryPoint(
+                object,
+                scenePoint
+            );
+
+        const dx =
+            nextPoint.x -
+            targetNode.x;
+
+        const dy =
+            nextPoint.y -
+            targetNode.y;
+
+        targetNode.x =
+            nextPoint.x;
+        targetNode.y =
+            nextPoint.y;
+
+        if (targetNode.handleIn) {
+            targetNode.handleIn = {
+                x:
+                    targetNode.handleIn.x +
+                    dx,
+                y:
+                    targetNode.handleIn.y +
+                    dy
+            };
+        }
+
+        if (targetNode.handleOut) {
+            targetNode.handleOut = {
+                x:
+                    targetNode.handleOut.x +
+                    dx,
+                y:
+                    targetNode.handleOut.y +
+                    dy
+            };
+        }
+
+        applyGeometryMutation(
+            object,
+            geometry,
+            targetNode.id
+        );
+
+        return true;
+    }
+
+    const nodeScene =
+        geometryPointToScene(
+            object,
+            targetNode
+        );
+
+    const constrainedScenePoint =
+        modifiers.shiftKey
+            ? constrainAngle(
+                scenePoint,
+                nodeScene,
+                ANGLE_CONSTRAINT_INCREMENT_DEG
+            )
+            : scenePoint;
+
+    const nextHandle =
+        sceneToGeometryPoint(
+            object,
+            constrainedScenePoint
+        );
+
+    targetNode.type =
+        "smooth";
+
+    if (
+        parsed.kind ===
+        "geom-handle-in"
+    ) {
+        targetNode.handleIn = {
+            x:
+                nextHandle.x,
+            y:
+                nextHandle.y
+        };
+
+        if (!modifiers.altKey) {
+            targetNode.handleOut =
+                mirrorHandle(
+                    targetNode,
+                    nextHandle
+                );
+        }
+    }
+
+    if (
+        parsed.kind ===
+        "geom-handle-out"
+    ) {
+        targetNode.handleOut = {
+            x:
+                nextHandle.x,
+            y:
+                nextHandle.y
+        };
+
+        if (!modifiers.altKey) {
+            targetNode.handleIn =
+                mirrorHandle(
+                    targetNode,
+                    nextHandle
+                );
+        }
+    }
+
+    applyGeometryMutation(
+        object,
+        geometry,
+        targetNode.id
+    );
+
+    return true;
+}
+
+function toggleGeometryPathNodeType(
+    object: Path,
+    nodeId: string
+) {
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    const parsed =
+        parseGeometryNodeId(
+            nodeId
+        );
+
+    if (
+        !geometry ||
+        !parsed ||
+        parsed.kind !== "geom-node"
+    ) {
+        return false;
+    }
+
+    const targetNode =
+        geometry.nodes.find(
+            (
+                node
+            ) =>
+                node.id ===
+                parsed.nodeId
+        );
+
+    if (!targetNode) {
+        return false;
+    }
+
+    if (
+        targetNode.type ===
+        "smooth"
+    ) {
+        targetNode.type =
+            "corner";
+        delete targetNode.handleIn;
+        delete targetNode.handleOut;
+    } else {
+        const handleLength =
+            32;
+
+        targetNode.type =
+            "smooth";
+        targetNode.handleIn = {
+            x:
+                targetNode.x -
+                handleLength,
+            y:
+                targetNode.y
+        };
+        targetNode.handleOut = {
+            x:
+                targetNode.x +
+                handleLength,
+            y:
+                targetNode.y
+        };
+    }
+
+    applyGeometryMutation(
+        object,
+        geometry,
+        targetNode.id
+    );
+
+    return true;
 }
 
 function movePolylineNode(
@@ -618,7 +1159,23 @@ function moveNodeToScenePoint(
     object: FabricObject,
     nodeId: string,
     scenePoint: Point,
+    modifiers: {
+        altKey?: boolean;
+        shiftKey?: boolean;
+    } = {}
 ) {
+    if (
+        isPathObject(object) &&
+        getPathGeometry(object)
+    ) {
+        return moveGeometryPathNode(
+            object,
+            nodeId,
+            scenePoint,
+            modifiers
+        );
+    }
+
     if (isLineObject(object)) {
         return moveLineNode(
             object,
@@ -635,22 +1192,59 @@ function moveNodeToScenePoint(
 
     if (
         parsed.kind === "poly" &&
-        isPolylineObject(object) &&
-        Number.isFinite(parsed.pointIndex)
+        isPolylineObject(object)
     ) {
-        return movePolylineNode(object, parsed.pointIndex, scenePoint);
+        const pointIndex =
+            Number(
+                "pointIndex" in parsed
+                    ? parsed.pointIndex
+                    : NaN
+            );
+
+        if (
+            !Number.isFinite(
+                pointIndex
+            )
+        ) {
+            return false;
+        }
+
+        return movePolylineNode(object, pointIndex, scenePoint);
     }
 
     if (
         parsed.kind === "path" &&
-        isPathObject(object) &&
-        Number.isFinite(parsed.commandIndex) &&
-        Number.isFinite(parsed.pointIndex)
+        isPathObject(object)
     ) {
+        const commandIndex =
+            Number(
+                "commandIndex" in parsed
+                    ? parsed.commandIndex
+                    : NaN
+            );
+
+        const pointIndex =
+            Number(
+                "pointIndex" in parsed
+                    ? parsed.pointIndex
+                    : NaN
+            );
+
+        if (
+            !Number.isFinite(
+                commandIndex
+            ) ||
+            !Number.isFinite(
+                pointIndex
+            )
+        ) {
+            return false;
+        }
+
         return movePathNode(
             object,
-            Number(parsed.commandIndex),
-            Number(parsed.pointIndex),
+            commandIndex,
+            pointIndex,
             scenePoint,
         );
     }
@@ -762,11 +1356,33 @@ export function useSelectionGeometry(
             setGeometry(readSelectionGeometry(canvas, selectionMode));
         };
 
+        if (patch.toggleNodeType) {
+            if (
+                isPathObject(object) &&
+                getPathGeometry(object)
+            ) {
+                toggleGeometryPathNodeType(
+                    object,
+                    patch.toggleNodeType.id
+                );
+            }
+
+            finishUpdate();
+
+            return;
+        }
+
         if (patch.node) {
             moveNodeToScenePoint(
                 object,
                 patch.node.id,
                 new Point(patch.node.x, patch.node.y),
+                {
+                    altKey:
+                        patch.node.altKey,
+                    shiftKey:
+                        patch.node.shiftKey
+                }
             );
 
             finishUpdate();

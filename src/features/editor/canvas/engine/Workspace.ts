@@ -18,6 +18,19 @@ import type {
 import { ViewportController } from "./modules/ViewportController";
 import { EditorActions } from "./modules/EditorActions";
 import { HistoryManager } from "./modules/HistoryManager";
+import {
+    createRafScheduler
+} from "../../geometry/geometryUtils";
+import {
+    SnapFeedback,
+    getSnappedObjectOffset
+} from "../../geometry/snapEngine";
+import {
+    useEditorStore
+} from "../../store/editor.store";
+import {
+    deleteNodeFromObject
+} from "../../utils/nodeEditing";
 
 
 // ---------------------------------------
@@ -46,6 +59,10 @@ type EventHandlers = {
 
 type WorkspaceObject = Rect;
 
+type ObjectMovingEvent = {
+    target: FabricObject;
+};
+
 export class Workspace {
 
     private viewport: ViewportController;
@@ -53,6 +70,8 @@ export class Workspace {
     private editor: EditorActions;
 
     private history: HistoryManager;
+
+    private snapFeedback!: SnapFeedback;
 
     private config: CanvasConfig;
 
@@ -71,6 +90,55 @@ export class Workspace {
     private listeners: ListenerMap = {};
 
     private eventHandlers: EventHandlers;
+
+    private movementSnapScheduler =
+        createRafScheduler<FabricObject>(
+            (
+                object
+            ) => {
+                object.setCoords();
+
+                const snap =
+                    getSnappedObjectOffset(
+                        object,
+                        {
+                            canvas:
+                                this.canvas,
+                            context:
+                                "OBJECT_MOVE",
+                            excludeObjects:
+                                [
+                                    object
+                                ]
+                        }
+                    );
+
+                if (
+                    snap.snapped
+                ) {
+                    object.set({
+                        left:
+                            (
+                                object.left ??
+                                0
+                            ) +
+                            snap.offset.x,
+                        top:
+                            (
+                                object.top ??
+                                0
+                            ) +
+                            snap.offset.y
+                    });
+
+                    object.setCoords();
+                }
+
+                this.snapFeedback.update(
+                    snap
+                );
+            }
+        );
 
 
     constructor(
@@ -125,7 +193,12 @@ export class Workspace {
             this.history
         )
 
+        this.snapFeedback = new SnapFeedback(
+            this.canvas
+        );
+
         this.initObjectBorder();
+        this.initMovementSnapping();
     }
 
     initCanvas(): void {
@@ -203,6 +276,48 @@ export class Workspace {
         this.canvas.on('selection:created', highlight);
         this.canvas.on('selection:updated', highlight)
     }
+
+    initMovementSnapping(): void {
+        this.canvas.on(
+            "object:moving",
+            this.handleObjectMoving
+        );
+
+        this.canvas.on(
+            "object:modified",
+            this.clearSnapFeedback
+        );
+
+        this.canvas.on(
+            "selection:cleared",
+            this.clearSnapFeedback
+        );
+    }
+
+    private handleObjectMoving =
+        (
+            event: ObjectMovingEvent
+        ) => {
+            const object =
+                event.target;
+
+            if (
+                object.name === "workspace" ||
+                object.name === "snap-preview"
+            ) {
+                return;
+            }
+
+            this.movementSnapScheduler.schedule(
+                object
+            );
+        };
+
+    private clearSnapFeedback =
+        () => {
+            this.movementSnapScheduler.cancel();
+            this.snapFeedback.clear();
+        };
 
     loadFromFiles(
         file: File, 
@@ -427,6 +542,44 @@ export class Workspace {
                 break;
             case key === 'delete' || key === 'backspace':
                 e.preventDefault();
+
+                {
+                    const editorState =
+                        useEditorStore.getState();
+
+                    if (
+                        editorState.selectionMode ===
+                            "node-edit"
+                    ) {
+                        const activeObject =
+                            this.canvas.getActiveObject();
+
+                        if (
+                            activeObject &&
+                            deleteNodeFromObject(
+                                activeObject,
+                                editorState.activeNodeId
+                            )
+                        ) {
+                            editorState.setActiveNodeId(
+                                null
+                            );
+
+                            this.canvas.fire(
+                                "object:modified",
+                                {
+                                    target:
+                                        activeObject
+                                }
+                            );
+
+                            this.canvas.requestRenderAll();
+                        }
+
+                        return;
+                    }
+                }
+
                 this.editor.delete();
                 break;
             case isCtrl && key === 'a':
@@ -496,6 +649,9 @@ export class Workspace {
         this.viewport.destroy();
 
         this.history.destroy();
+
+        this.movementSnapScheduler.cancel();
+        this.snapFeedback.destroy();
         
         window.removeEventListener('keydown', this.eventHandlers.handleKeydown);
 
@@ -504,6 +660,18 @@ export class Workspace {
         this.canvas.off('object:rotating', this.editor.highlightObject);
         this.canvas.off('selection:created', this.editor.highlightObject);
         this.canvas.off('selection:updated', this.editor.highlightObject);
+        this.canvas.off(
+            "object:moving",
+            this.handleObjectMoving
+        );
+        this.canvas.off(
+            "object:modified",
+            this.clearSnapFeedback
+        );
+        this.canvas.off(
+            "selection:cleared",
+            this.clearSnapFeedback
+        );
 
         window.removeEventListener('beforeunload', this.beforeUnloadHandler)
 

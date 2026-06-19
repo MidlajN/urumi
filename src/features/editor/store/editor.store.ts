@@ -17,6 +17,16 @@ export type EditorSelectionMode =
     | "select"
     | "node-edit";
 
+export type EditorInteractionMode =
+    | "idle"
+    | "selecting"
+    | "object-selected"
+    | "object-dragging"
+    | "object-transforming"
+    | "node-editing"
+    | "polyline-drawing"
+    | "dimension-editing";
+
 export const OPERATION_COLORS = [
     {
         id: "cut",
@@ -49,6 +59,11 @@ type EditorStore = {
     fontSize: number;
     dimensionsOverlayEnabled: boolean;
     selectionMode: EditorSelectionMode;
+    interactionMode: EditorInteractionMode;
+    activeObjectId: string | null;
+    activeEditingObjectId: string | null;
+    activeNodeId: string | null;
+    lastObjectTransformEndedAt: number | null;
 
     setTool: (
         tool: ToolType
@@ -58,7 +73,25 @@ type EditorStore = {
         mode: EditorSelectionMode
     ) => void;
 
-    enterNodeEditMode: () => void;
+    setInteractionMode: (
+        mode: EditorInteractionMode
+    ) => void;
+
+    setActiveObjectId: (
+        id: string | null
+    ) => void;
+
+    setActiveNodeId: (
+        id: string | null
+    ) => void;
+
+    setLastObjectTransformEndedAt: (
+        timestamp: number | null
+    ) => void;
+
+    enterNodeEditMode: (
+        objectId?: string | null
+    ) => void;
 
     exitNodeEditMode: () => void;
 
@@ -91,11 +124,23 @@ export const useEditorStore =
         fontSize: 40,
         dimensionsOverlayEnabled: true,
         selectionMode: "select",
+        interactionMode: "idle",
+        activeObjectId: null,
+        activeEditingObjectId: null,
+        activeNodeId: null,
+        lastObjectTransformEndedAt: null,
 
         setTool: (tool) =>
             set({
                 activeTool: tool,
-                selectionMode: "select"
+                selectionMode: "select",
+                interactionMode:
+                    tool === "line"
+                        ? "polyline-drawing"
+                        : "idle",
+                activeEditingObjectId: null,
+                activeNodeId: null,
+                lastObjectTransformEndedAt: null
             }),
 
         setSelectionMode: (
@@ -105,15 +150,53 @@ export const useEditorStore =
                 selectionMode
             }),
 
-        enterNodeEditMode: () =>
+        setInteractionMode: (
+            interactionMode
+        ) =>
+            set({
+                interactionMode
+            }),
+
+        setActiveObjectId: (
+            activeObjectId
+        ) =>
+            set({
+                activeObjectId
+            }),
+
+        setActiveNodeId: (
+            activeNodeId
+        ) =>
+            set({
+                activeNodeId
+            }),
+
+        setLastObjectTransformEndedAt: (
+            lastObjectTransformEndedAt
+        ) =>
+            set({
+                lastObjectTransformEndedAt
+            }),
+
+        enterNodeEditMode: (
+            objectId = null
+        ) =>
             set({
                 activeTool: "select",
-                selectionMode: "node-edit"
+                selectionMode: "node-edit",
+                interactionMode: "node-editing",
+                activeEditingObjectId: objectId,
+                activeNodeId: null,
+                lastObjectTransformEndedAt: null
             }),
 
         exitNodeEditMode: () =>
             set({
-                selectionMode: "select"
+                selectionMode: "select",
+                interactionMode: "idle",
+                activeEditingObjectId: null,
+                activeNodeId: null,
+                lastObjectTransformEndedAt: null
             }),
 
         setShape: (shape) =>

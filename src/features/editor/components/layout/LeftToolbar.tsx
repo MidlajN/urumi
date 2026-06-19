@@ -163,7 +163,11 @@ export default function LeftToolbar() {
             return;
         }
 
-        enterNodeEditMode();
+        enterNodeEditMode(
+            object.id ??
+            object.name ??
+            null
+        );
         canvas?.requestRenderAll();
     };
 
@@ -267,10 +271,10 @@ export default function LeftToolbar() {
                 }
             />
 
-            {/* LINE */}
+            {/* PATH */}
             <ToolButton
                 tool="line"
-                label="Line"
+                label="Path"
                 icon={
                     PenLine
                 }
