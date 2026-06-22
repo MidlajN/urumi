@@ -569,26 +569,23 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                     draftGeometry = {
                         ...draftGeometry,
                         nodes:
-                            draftGeometry.nodes.map(
-                                (
-                                    node
-                                ) => {
-                                    if (
-                                        node.id !==
-                                        nodeId
-                                    ) {
-                                        return node;
-                                    }
+                            draftGeometry.nodes.map((node) => {
+                                if (node.id !== nodeId) { return node; }
 
-                                    return createSmoothNode(
+                                const smoothNode =
+                                    createSmoothNode(
                                         new Point(
                                             node.x,
                                             node.y
                                         ),
                                         handlePoint
                                     );
-                                }
-                            )
+
+                                return {
+                                    ...smoothNode,
+                                    id: node.id
+                                };
+                            })
                     };
                 };
 
