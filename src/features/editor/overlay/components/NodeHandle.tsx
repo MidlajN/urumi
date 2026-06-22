@@ -49,6 +49,10 @@ export default function NodeHandle({
         activeNodeId ===
         node.id;
 
+    const isHandle =
+        node.role === "handle-in" ||
+        node.role === "handle-out";
+
     const handlePointerDown =
         (
             event: React.PointerEvent<HTMLButtonElement>
@@ -177,7 +181,11 @@ export default function NodeHandle({
 
     return (
         <button
-            aria-label="Edit node"
+            aria-label={
+                isHandle
+                    ? "Edit bezier handle"
+                    : "Edit node"
+            }
             className="
                 pointer-events-auto
                 absolute
@@ -200,14 +208,30 @@ export default function NodeHandle({
                     node.viewport.x,
                 top:
                     node.viewport.y,
+                width:
+                    isHandle
+                        ? 9
+                        : 8,
+                height:
+                    isHandle
+                        ? 9
+                        : 8,
+                borderRadius:
+                    isHandle
+                        ? 2
+                        : 9999,
                 backgroundColor:
                     active
                         ? "#0891b2"
-                        : "#ffffff",
+                        : isHandle
+                            ? "#ecfeff"
+                            : "#ffffff",
                 borderColor:
                     active
                         ? "#0891b2"
-                        : "#18181b",
+                        : isHandle
+                            ? "#0891b2"
+                            : "#18181b",
             }}
             onPointerDown={
                 handlePointerDown

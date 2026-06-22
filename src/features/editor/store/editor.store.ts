@@ -63,6 +63,7 @@ type EditorStore = {
     activeObjectId: string | null;
     activeEditingObjectId: string | null;
     activeNodeId: string | null;
+    activeSegmentId: string | null;
     lastObjectTransformEndedAt: number | null;
 
     setTool: (
@@ -82,6 +83,10 @@ type EditorStore = {
     ) => void;
 
     setActiveNodeId: (
+        id: string | null
+    ) => void;
+
+    setActiveSegmentId: (
         id: string | null
     ) => void;
 
@@ -128,6 +133,7 @@ export const useEditorStore =
         activeObjectId: null,
         activeEditingObjectId: null,
         activeNodeId: null,
+        activeSegmentId: null,
         lastObjectTransformEndedAt: null,
 
         setTool: (tool) =>
@@ -140,6 +146,7 @@ export const useEditorStore =
                         : "idle",
                 activeEditingObjectId: null,
                 activeNodeId: null,
+                activeSegmentId: null,
                 lastObjectTransformEndedAt: null
             }),
 
@@ -168,7 +175,16 @@ export const useEditorStore =
             activeNodeId
         ) =>
             set({
-                activeNodeId
+                activeNodeId,
+                activeSegmentId: null
+            }),
+
+        setActiveSegmentId: (
+            activeSegmentId
+        ) =>
+            set({
+                activeSegmentId,
+                activeNodeId: null
             }),
 
         setLastObjectTransformEndedAt: (
@@ -187,6 +203,7 @@ export const useEditorStore =
                 interactionMode: "node-editing",
                 activeEditingObjectId: objectId,
                 activeNodeId: null,
+                activeSegmentId: null,
                 lastObjectTransformEndedAt: null
             }),
 
@@ -196,6 +213,7 @@ export const useEditorStore =
                 interactionMode: "idle",
                 activeEditingObjectId: null,
                 activeNodeId: null,
+                activeSegmentId: null,
                 lastObjectTransformEndedAt: null
             }),
 

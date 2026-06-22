@@ -76,6 +76,7 @@ export default function EditorCanvas() {
     const setInteractionMode = useEditorStore((state) => state.setInteractionMode)
     const setActiveObjectId = useEditorStore((state) => state.setActiveObjectId)
     const setActiveNodeId = useEditorStore((state) => state.setActiveNodeId)
+    const setActiveSegmentId = useEditorStore((state) => state.setActiveSegmentId)
     const setLastObjectTransformEndedAt = useEditorStore((state) => state.setLastObjectTransformEndedAt)
 
     useEditorSetup({ canvas, toolRef })
@@ -131,6 +132,7 @@ export default function EditorCanvas() {
         const handleSelectionCleared = () => {
             setActiveObjectId(null)
             setActiveNodeId(null)
+            setActiveSegmentId(null)
 
             if (selectionMode === 'node-edit') {
                 exitNodeEditMode()
@@ -145,6 +147,7 @@ export default function EditorCanvas() {
                 canvas.getActiveObject()
 
             setActiveNodeId(null)
+            setActiveSegmentId(null)
 
             setActiveObjectId(
                 getObjectId(
@@ -268,6 +271,7 @@ export default function EditorCanvas() {
         exitNodeEditMode,
         setActiveObjectId,
         setActiveNodeId,
+        setActiveSegmentId,
         setLastObjectTransformEndedAt,
         setInteractionMode,
         selectionMode
@@ -372,9 +376,9 @@ const BottomNav = () => {
                 transition={{ duration: 0.5 }}
             >
                 
-                <div className="flex h-fit shadow-xl rounded-md">
+                <div className="flex h-fit shadow-xl rounded-lg p-1 bg-white gap-0.5">
                     <motion.button 
-                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
+                        className="px-4 py-2 bg-zinc-100 transition-all duration-300 border border-transparent rounded-s-md hover:border-[#1c809681]"
                         whileTap={{ scale: 0.95, background: '#f3f4f6' }}
                         onClick={() => {
                             if (!workspace) return;
@@ -385,7 +389,7 @@ const BottomNav = () => {
                         <Undo width={16} height={16} />
                     </motion.button>
                     <motion.button
-                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]" 
+                        className="px-4 py-2 bg-zinc-100 transition-all duration-300 rounded-e-md border border-transparent hover:border-[#1c809681]" 
                         whileTap={{ scale: 0.95, background: '#f3f4f6' }}
                         onClick={() => {
                             if (!workspace) return;
@@ -395,18 +399,15 @@ const BottomNav = () => {
                     >
                         <Redo width={16} height={16} />
                     </motion.button>
-                    <motion.button
-                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681] rounded-e-md" 
-                        whileTap={{ scale: 0.95, background: '#f3f4f6' }}
-                        onClick={() => { 
-                            if (!workspace) return
-
-                            workspace.setZoomAuto()
-                        }}
-                    >
-                        <ResetIcon width={18} height={18} />
-                    </motion.button>
                 </div>
+            </motion.div>
+            <motion.div 
+                className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex gap-4 items-center"
+                initial={{ opacity: 0, translateY: 40 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                exit={{ opacity: 0, translateY: 40}}
+                transition={{ duration: 0.5 }}
+            >
 
                 <div className="flex h-fit shadow-xl rounded-md">
                     <motion.button 

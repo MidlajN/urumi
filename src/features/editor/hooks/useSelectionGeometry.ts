@@ -98,6 +98,10 @@ type BaseGeometryPatch = Partial<
 
 export type SelectionGeometryPatch = BaseGeometryPatch & {
     length?: number;
+    segmentAction?: {
+        id: string;
+        action: "convert-curve" | "add-node" | "split";
+    };
     toggleNodeType?: {
         id: string;
     };
@@ -434,6 +438,10 @@ function getNodeGeometry(object: FabricObject, canvas: Canvas) {
         id: node.id,
         index: node.index,
         role: "node" as const,
+        ownerNodeId:
+            parseGeometryNodeId(
+                node.id
+            )?.nodeId,
         viewport: scenePointToViewport(node.scene, canvas),
         })),
         ...handleNodes.map((node) => {
@@ -977,6 +985,148 @@ function toggleGeometryPathNodeType(
     return true;
 }
 
+function findGeometryNodeByOverlayId(
+    geometry: PathGeometry,
+    overlayId: string
+) {
+    const parsed =
+        parseGeometryNodeId(
+            overlayId
+        );
+
+    return parsed
+        ? geometry.nodes.find(
+            (
+                node
+            ) =>
+                node.id ===
+                parsed.nodeId
+        )
+        : null;
+}
+
+function applyGeometrySegmentAction(
+    object: Path,
+    segmentId: string,
+    action: "convert-curve" | "add-node" | "split"
+) {
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    if (!geometry) {
+        return false;
+    }
+
+    const [
+        startOverlayId,
+        endOverlayId
+    ] = segmentId.split(":geom-node:");
+
+    const startId =
+        startOverlayId;
+
+    const endId =
+        endOverlayId
+            ? `geom-node:${endOverlayId}`
+            : "";
+
+    const startNode =
+        findGeometryNodeByOverlayId(
+            geometry,
+            startId
+        );
+
+    const endNode =
+        findGeometryNodeByOverlayId(
+            geometry,
+            endId
+        );
+
+    if (
+        !startNode ||
+        !endNode
+    ) {
+        return false;
+    }
+
+    const startIndex =
+        geometry.nodes.findIndex(
+            (
+                node
+            ) =>
+                node.id ===
+                startNode.id
+        );
+
+    if (
+        startIndex < 0
+    ) {
+        return false;
+    }
+
+    const dx =
+        endNode.x -
+        startNode.x;
+
+    const dy =
+        endNode.y -
+        startNode.y;
+
+    if (
+        action === "convert-curve"
+    ) {
+        startNode.type =
+            "smooth";
+        endNode.type =
+            "smooth";
+        startNode.handleOut = {
+            x:
+                startNode.x +
+                dx / 3,
+            y:
+                startNode.y +
+                dy / 3
+        };
+        endNode.handleIn = {
+            x:
+                endNode.x -
+                dx / 3,
+            y:
+                endNode.y -
+                dy / 3
+        };
+    } else {
+        const newNode: PathNode = {
+            id:
+                `node-${Date.now().toString(36)}`,
+            type:
+                "corner",
+            x:
+                startNode.x +
+                dx / 2,
+            y:
+                startNode.y +
+                dy / 2
+        };
+
+        geometry.nodes.splice(
+            startIndex + 1,
+            0,
+            newNode
+        );
+    }
+
+    applyGeometryMutation(
+        object,
+        geometry,
+        startNode.id
+    );
+
+    return true;
+}
+
 function movePolylineNode(
     object: Polyline,
     pointIndex: number,
@@ -1355,6 +1505,23 @@ export function useSelectionGeometry(
             canvas.requestRenderAll();
             setGeometry(readSelectionGeometry(canvas, selectionMode));
         };
+
+        if (patch.segmentAction) {
+            if (
+                isPathObject(object) &&
+                getPathGeometry(object)
+            ) {
+                applyGeometrySegmentAction(
+                    object,
+                    patch.segmentAction.id,
+                    patch.segmentAction.action
+                );
+            }
+
+            finishUpdate();
+
+            return;
+        }
 
         if (patch.toggleNodeType) {
             if (
