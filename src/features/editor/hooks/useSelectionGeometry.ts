@@ -27,6 +27,7 @@ import {
     getGeometryHandleOutId,
     getGeometryNodeId,
     getPathGeometry,
+    createPathNodeId,
     parseGeometryNodeId,
     pointFromHandle,
     type PathGeometry,
@@ -65,6 +66,7 @@ export type SelectionSegment = {
     length: number;
     start: ViewportPoint;
     end: ViewportPoint;
+    path: ViewportPoint[];
     midpoint: ViewportPoint;
     angle: number;
 };
@@ -101,6 +103,7 @@ export type SelectionGeometryPatch = BaseGeometryPatch & {
     segmentAction?: {
         id: string;
         action: "convert-curve" | "add-node" | "split";
+        scenePoint?: ViewportPoint;
     };
     toggleNodeType?: {
         id: string;
@@ -137,6 +140,87 @@ function mmToScene(value: number) {
 
 function distance(start: Point, end: Point) {
     return Math.hypot(end.x - start.x, end.y - start.y);
+}
+
+function getPolylineLength(points: Point[]) {
+    let length = 0;
+
+    for (let index = 1; index < points.length; index += 1) {
+        length += distance(
+            points[index - 1],
+            points[index]
+        );
+    }
+
+    return length;
+}
+
+function getPointAtPolylineRatio(
+    points: Point[],
+    ratio: number
+) {
+    if (points.length === 0) {
+        return new Point(0, 0);
+    }
+
+    if (points.length === 1) {
+        return points[0];
+    }
+
+    const targetLength =
+        getPolylineLength(points) *
+        ratio;
+
+    let travelled = 0;
+
+    for (let index = 1; index < points.length; index += 1) {
+        const start =
+            points[index - 1];
+
+        const end =
+            points[index];
+
+        const segmentLength =
+            distance(
+                start,
+                end
+            );
+
+        if (
+            travelled + segmentLength >=
+            targetLength
+        ) {
+            const localRatio =
+                segmentLength > 0
+                    ? (
+                        targetLength -
+                        travelled
+                    ) / segmentLength
+                    : 0;
+
+            return new Point(
+                start.x +
+                    (
+                        end.x -
+                        start.x
+                    ) *
+                    localRatio,
+                start.y +
+                    (
+                        end.y -
+                        start.y
+                    ) *
+                    localRatio
+            );
+        }
+
+        travelled +=
+            segmentLength;
+    }
+
+    return points[
+        points.length - 1
+    ];
 }
 
 function scenePointToViewport(point: Point, canvas: Canvas): ViewportPoint {
@@ -401,6 +485,147 @@ function getGeometryHandleSceneNodes(
     );
 }
 
+function cubicPoint(
+    start: Point,
+    handleOut: Point,
+    handleIn: Point,
+    end: Point,
+    t: number
+) {
+    const mt =
+        1 -
+        t;
+
+    const mt2 =
+        mt *
+        mt;
+
+    const t2 =
+        t *
+        t;
+
+    return new Point(
+        mt2 * mt * start.x +
+            3 * mt2 * t * handleOut.x +
+            3 * mt * t2 * handleIn.x +
+            t2 * t * end.x,
+        mt2 * mt * start.y +
+            3 * mt2 * t * handleOut.y +
+            3 * mt * t2 * handleIn.y +
+            t2 * t * end.y
+    );
+}
+
+function lerpPoint(
+    start: Point,
+    end: Point,
+    t: number
+) {
+    return new Point(
+        start.x +
+            (
+                end.x -
+                start.x
+            ) *
+            t,
+        start.y +
+            (
+                end.y -
+                start.y
+            ) *
+            t
+    );
+}
+
+function getGeometrySegmentScenePath(
+    object: Path,
+    startIndex: number,
+    endIndex: number
+) {
+    const geometry =
+        getPathGeometry(
+            object
+        );
+
+    const start =
+        geometry?.nodes[startIndex];
+
+    const end =
+        geometry?.nodes[endIndex];
+
+    if (
+        !geometry ||
+        !start ||
+        !end
+    ) {
+        return null;
+    }
+
+    const startPoint =
+        new Point(
+            start.x,
+            start.y
+        );
+
+    const endPoint =
+        new Point(
+            end.x,
+            end.y
+        );
+
+    if (
+        !start.handleOut &&
+        !end.handleIn
+    ) {
+        return [
+            geometryPointToScene(
+                object,
+                startPoint
+            ),
+            geometryPointToScene(
+                object,
+                endPoint
+            )
+        ];
+    }
+
+    const handleOut =
+        start.handleOut
+            ? new Point(
+                start.handleOut.x,
+                start.handleOut.y
+            )
+            : startPoint;
+
+    const handleIn =
+        end.handleIn
+            ? new Point(
+                end.handleIn.x,
+                end.handleIn.y
+            )
+            : endPoint;
+
+    const samples: Point[] =
+        [];
+
+    for (let step = 0; step <= 24; step += 1) {
+        samples.push(
+            geometryPointToScene(
+                object,
+                cubicPoint(
+                    startPoint,
+                    handleOut,
+                    handleIn,
+                    endPoint,
+                    step / 24
+                )
+            )
+        );
+    }
+
+    return samples;
+}
+
 function getSceneNodes(object: FabricObject) {
     if (isPathObject(object)) {
         return getPathSceneNodes(object);
@@ -487,18 +712,63 @@ function getNodeGeometry(object: FabricObject, canvas: Canvas) {
             continue;
         }
 
-        const midpoint = start.scene.midPointFrom(end.scene);
+        const path =
+            isPathObject(object) &&
+            getPathGeometry(object)
+                ? getGeometrySegmentScenePath(
+                    object,
+                    start.index,
+                    end.index
+                ) ?? [
+                    start.scene,
+                    end.scene
+                ]
+                : [
+                    start.scene,
+                    end.scene
+                ];
+
+        const midpoint =
+            getPointAtPolylineRatio(
+                path,
+                0.5
+            );
+
+        const angleStart =
+            getPointAtPolylineRatio(
+                path,
+                0.48
+            );
+
+        const angleEnd =
+            getPointAtPolylineRatio(
+                path,
+                0.52
+            );
 
         segments.push({
             id: `${start.id}:${end.id}`,
             startNodeId: start.id,
             endNodeId: end.id,
-            length: sceneToMm(distance(start.scene, end.scene)),
+            length:
+                sceneToMm(
+                    getPolylineLength(
+                        path
+                    )
+                ),
             start: scenePointToViewport(start.scene, canvas),
             end: scenePointToViewport(end.scene, canvas),
+            path:
+                path.map(
+                    point =>
+                        scenePointToViewport(
+                            point,
+                            canvas
+                        )
+                ),
             midpoint: scenePointToViewport(midpoint, canvas),
             angle:
-                (Math.atan2(end.scene.y - start.scene.y, end.scene.x - start.scene.x) * 180) / Math.PI,
+                (Math.atan2(angleEnd.y - angleStart.y, angleEnd.x - angleStart.x) * 180) / Math.PI,
         });
     }
 
@@ -1005,10 +1275,177 @@ function findGeometryNodeByOverlayId(
         : null;
 }
 
+function findNearestCubicT(
+    start: Point,
+    handleOut: Point,
+    handleIn: Point,
+    end: Point,
+    target: Point
+) {
+    let nearestT = 0.5;
+    let nearestDistance =
+        Number.POSITIVE_INFINITY;
+
+    for (let step = 0; step <= 80; step += 1) {
+        const t =
+            step / 80;
+
+        const point =
+            cubicPoint(
+                start,
+                handleOut,
+                handleIn,
+                end,
+                t
+            );
+
+        const pointDistance =
+            distance(
+                point,
+                target
+            );
+
+        if (
+            pointDistance <
+            nearestDistance
+        ) {
+            nearestDistance =
+                pointDistance;
+            nearestT =
+                t;
+        }
+    }
+
+    return Math.max(
+        0.05,
+        Math.min(
+            0.95,
+            nearestT
+        )
+    );
+}
+
+function splitCubicSegment(
+    startNode: PathNode,
+    endNode: PathNode,
+    t: number
+): PathNode {
+    const p0 =
+        new Point(
+            startNode.x,
+            startNode.y
+        );
+
+    const p1 =
+        startNode.handleOut
+            ? new Point(
+                startNode.handleOut.x,
+                startNode.handleOut.y
+            )
+            : p0;
+
+    const p2 =
+        endNode.handleIn
+            ? new Point(
+                endNode.handleIn.x,
+                endNode.handleIn.y
+            )
+            : new Point(
+                endNode.x,
+                endNode.y
+            );
+
+    const p3 =
+        new Point(
+            endNode.x,
+            endNode.y
+        );
+
+    const p01 =
+        lerpPoint(
+            p0,
+            p1,
+            t
+        );
+
+    const p12 =
+        lerpPoint(
+            p1,
+            p2,
+            t
+        );
+
+    const p23 =
+        lerpPoint(
+            p2,
+            p3,
+            t
+        );
+
+    const p012 =
+        lerpPoint(
+            p01,
+            p12,
+            t
+        );
+
+    const p123 =
+        lerpPoint(
+            p12,
+            p23,
+            t
+        );
+
+    const p0123 =
+        lerpPoint(
+            p012,
+            p123,
+            t
+        );
+
+    startNode.handleOut = {
+        x:
+            p01.x,
+        y:
+            p01.y
+    };
+
+    endNode.handleIn = {
+        x:
+            p23.x,
+        y:
+            p23.y
+    };
+
+    return {
+        id:
+            createPathNodeId(),
+        type:
+            "smooth",
+        x:
+            p0123.x,
+        y:
+            p0123.y,
+        handleIn: {
+            x:
+                p012.x,
+            y:
+                p012.y
+        },
+        handleOut: {
+            x:
+                p123.x,
+            y:
+                p123.y
+        }
+    };
+}
+
 function applyGeometrySegmentAction(
     object: Path,
     segmentId: string,
-    action: "convert-curve" | "add-node" | "split"
+    action: "convert-curve" | "add-node" | "split",
+    scenePoint?: ViewportPoint
 ) {
     const geometry =
         getPathGeometry(
@@ -1098,18 +1535,73 @@ function applyGeometrySegmentAction(
                 dy / 3
         };
     } else {
-        const newNode: PathNode = {
-            id:
-                `node-${Date.now().toString(36)}`,
-            type:
-                "corner",
-            x:
-                startNode.x +
-                dx / 2,
-            y:
-                startNode.y +
-                dy / 2
-        };
+        const insertionPoint =
+            scenePoint
+                ? sceneToGeometryPoint(
+                    object,
+                    new Point(
+                        scenePoint.x,
+                        scenePoint.y
+                    )
+                )
+                : new Point(
+                    startNode.x +
+                        dx / 2,
+                    startNode.y +
+                        dy / 2
+                );
+
+        const hasCurve =
+            Boolean(
+                startNode.handleOut ||
+                endNode.handleIn
+            );
+
+        const newNode: PathNode =
+            hasCurve
+                ? splitCubicSegment(
+                    startNode,
+                    endNode,
+                    findNearestCubicT(
+                        new Point(
+                            startNode.x,
+                            startNode.y
+                        ),
+                        startNode.handleOut
+                            ? new Point(
+                                startNode.handleOut.x,
+                                startNode.handleOut.y
+                            )
+                            : new Point(
+                                startNode.x,
+                                startNode.y
+                            ),
+                        endNode.handleIn
+                            ? new Point(
+                                endNode.handleIn.x,
+                                endNode.handleIn.y
+                            )
+                            : new Point(
+                                endNode.x,
+                                endNode.y
+                            ),
+                        new Point(
+                            endNode.x,
+                            endNode.y
+                        ),
+                        insertionPoint
+                    )
+                )
+                : {
+                    id:
+                        createPathNodeId(),
+                    type:
+                        "corner",
+                    x:
+                        insertionPoint.x,
+                    y:
+                        insertionPoint.y
+                };
 
         geometry.nodes.splice(
             startIndex + 1,
@@ -1514,7 +2006,8 @@ export function useSelectionGeometry(
                 applyGeometrySegmentAction(
                     object,
                     patch.segmentAction.id,
-                    patch.segmentAction.action
+                    patch.segmentAction.action,
+                    patch.segmentAction.scenePoint
                 );
             }
 

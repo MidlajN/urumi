@@ -11,7 +11,10 @@ import type {
 export function viewportPointerToScene(
     geometry: SelectionGeometry,
     overlayRef: OverlayRef,
-    event: PointerEvent
+    event: Pick<
+        MouseEvent | PointerEvent,
+        "clientX" | "clientY"
+    >
 ) {
     const rect =
         overlayRef.current

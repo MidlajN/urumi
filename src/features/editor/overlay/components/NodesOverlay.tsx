@@ -12,6 +12,9 @@ import type {
 import {
     getSegmentMeasurementVisibility
 } from "../utils/measurementVisibility";
+import {
+    viewportPointerToScene
+} from "../utils/viewport";
 
 function SegmentMeasurement({
     segment,
@@ -20,6 +23,12 @@ function SegmentMeasurement({
     segment: SelectionSegment;
     onCommit: OverlayCommit;
 }) {
+    if (
+        segment.path.length > 2
+    ) {
+        return null;
+    }
+
     const visibility =
         getSegmentMeasurementVisibility(
             segment.start,
@@ -60,146 +69,114 @@ function SegmentEditor({
     active,
     onSelect,
     onCommit,
+    geometry,
+    overlayRef,
 }: {
     segment: SelectionSegment;
     active: boolean;
     onSelect: () => void;
     onCommit: OverlayCommit;
+    geometry: SelectionGeometry;
+    overlayRef: OverlayRef;
 }) {
-    const setActiveNodeId =
-        useEditorStore(
-            (
-                state
-            ) =>
-                state.setActiveNodeId
-        );
-
-    const width =
-        Math.hypot(
-            segment.end.x -
-                segment.start.x,
-            segment.end.y -
-                segment.start.y
-        );
+    const pathData =
+        segment.path
+            .map(
+                (
+                    point,
+                    index
+                ) =>
+                    `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
+            )
+            .join(" ");
 
     return (
-        <>
-            <button
+        <g>
+            {active && (
+                <path
+                    d={
+                        pathData
+                    }
+                    fill="none"
+                    stroke="rgba(8, 145, 178, 0.28)"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={12}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                />
+            )}
+            <path
+                d={
+                    pathData
+                }
+                fill="none"
+                stroke={
+                    active
+                        ? "rgba(8, 145, 178, 0.92)"
+                        : "rgba(8, 145, 178, 0)"
+                }
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={
+                    active
+                        ? 2
+                        : 1
+                }
+                vectorEffect="non-scaling-stroke"
+                pointerEvents="none"
+            />
+            <path
                 aria-label="Select segment"
-                className="
-                    pointer-events-auto
-                    absolute
-                    h-3
-                    rounded-full
-                    outline-none
-                    focus-visible:ring-2
-                    focus-visible:ring-cyan-400
-                "
-                style={{
-                    left:
-                        segment.start.x,
-                    top:
-                        segment.start.y,
-                    width:
-                        Math.max(
-                            width,
-                            8
-                        ),
-                    transform:
-                        `translateY(-50%) rotate(${segment.angle}deg)`,
-                    transformOrigin:
-                        "left center",
-                    backgroundColor:
-                        active
-                            ? "rgba(8, 145, 178, 0.26)"
-                            : "transparent",
-                    border:
-                        active
-                            ? "1px solid rgba(8, 145, 178, 0.72)"
-                            : "1px solid transparent"
-                }}
+                d={
+                    pathData
+                }
+                fill="none"
+                stroke="transparent"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={18}
+                className="pointer-events-auto cursor-pointer outline-none"
+                pointerEvents="stroke"
+                tabIndex={0}
                 onPointerDown={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     onSelect();
                 }}
-            />
+                onDoubleClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSelect();
 
-            {active && (
-                <div
-                    className="
-                        pointer-events-auto
-                        absolute
-                        flex
-                        -translate-x-1/2
-                        -translate-y-[calc(100%+10px)]
-                        gap-1
-                        rounded-md
-                        border
-                        border-zinc-200
-                        bg-white
-                        p-1
-                        text-[11px]
-                        shadow-sm
-                    "
-                    style={{
-                        left:
-                            segment.midpoint.x,
-                        top:
-                            segment.midpoint.y
-                    }}
-                >
-                    <button
-                        className="rounded px-2 py-1 hover:bg-zinc-100"
-                        onClick={() => {
-                            onCommit({
-                                segmentAction: {
-                                    id:
-                                        segment.id,
-                                    action:
-                                        "convert-curve"
-                                }
-                            });
-                            setActiveNodeId(
-                                segment.startNodeId
-                            );
-                        }}
-                    >
-                        Curve
-                    </button>
-                    <button
-                        className="rounded px-2 py-1 hover:bg-zinc-100"
-                        onClick={() =>
-                            onCommit({
-                                segmentAction: {
-                                    id:
-                                        segment.id,
-                                    action:
-                                        "add-node"
-                                }
-                            })
+                    const scenePoint =
+                        viewportPointerToScene(
+                            geometry,
+                            overlayRef,
+                            event.nativeEvent
+                        );
+
+                    if (!scenePoint) {
+                        return;
+                    }
+
+                    onCommit({
+                        segmentAction: {
+                            id:
+                                segment.id,
+                            action:
+                                "add-node",
+                            scenePoint: {
+                                x:
+                                    scenePoint.x,
+                                y:
+                                    scenePoint.y
+                            }
                         }
-                    >
-                        + Node
-                    </button>
-                    <button
-                        className="rounded px-2 py-1 hover:bg-zinc-100"
-                        onClick={() =>
-                            onCommit({
-                                segmentAction: {
-                                    id:
-                                        segment.id,
-                                    action:
-                                        "split"
-                                }
-                            })
-                        }
-                    >
-                        Split
-                    </button>
-                </div>
-            )}
-        </>
+                    });
+                }}
+            />
+        </g>
     );
 }
 
@@ -357,32 +334,49 @@ export default function NodesOverlay({
 
     return (
         <>
-            {segments.map(
-                (
-                    segment
-                ) => (
-                    <SegmentEditor
-                        key={
-                            `editor:${segment.id}`
-                        }
-                        segment={
-                            segment
-                        }
-                        active={
-                            activeSegmentId ===
-                            segment.id
-                        }
-                        onSelect={() =>
-                            setActiveSegmentId(
+            <svg
+                className="
+                    pointer-events-none
+                    absolute
+                    inset-0
+                    h-full
+                    w-full
+                    overflow-visible
+                "
+            >
+                {segments.map(
+                    (
+                        segment
+                    ) => (
+                        <SegmentEditor
+                            key={
+                                `editor:${segment.id}`
+                            }
+                            segment={
+                                segment
+                            }
+                            active={
+                                activeSegmentId ===
                                 segment.id
-                            )
-                        }
-                        onCommit={
-                            onCommit
-                        }
-                    />
-                )
-            )}
+                            }
+                            onSelect={() =>
+                                setActiveSegmentId(
+                                    segment.id
+                                )
+                            }
+                            onCommit={
+                                onCommit
+                            }
+                            geometry={
+                                geometry
+                            }
+                            overlayRef={
+                                overlayRef
+                            }
+                        />
+                    )
+                )}
+            </svg>
 
             {measurementsEnabled && segments.map(
                 (
