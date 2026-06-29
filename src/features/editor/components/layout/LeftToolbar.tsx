@@ -352,6 +352,7 @@ export default function LeftToolbar() {
                     tool ===
                     "shape"
                 }
+                hasMenu
                 onMouseEnter={() =>
                     openMenu(
                         "shape"

@@ -7,6 +7,7 @@ type Props = {
     tool?: string;
     icon: LucideIcon;
     active?: boolean;
+    hasMenu?: boolean;
     label?: string;
     onClick?: () => void;
     onMouseEnter?: () => void;
@@ -17,6 +18,7 @@ export default function ToolButton({
     tool,
     icon: Icon,
     active,
+    hasMenu,
     label,
     onClick,
     onMouseEnter,
@@ -45,6 +47,7 @@ export default function ToolButton({
                 `
                 w-11
                 h-11
+                relative
                 rounded-lg
                 flex
                 items-center
@@ -68,6 +71,26 @@ export default function ToolButton({
             )}
         >
             <Icon size={18} />
+            {hasMenu && (
+                <span
+                    aria-hidden="true"
+                    className={clsx(
+                        `
+                        absolute
+                        right-1
+                        bottom-1
+                        w-0
+                        h-0
+                        border-l-[7px]
+                        border-b-[7px]
+                        border-l-transparent
+                        `,
+                        active
+                            ? "border-r-white/80"
+                            : "border-t-zinc-400"
+                    )}
+                />
+            )}
         </button>
     );
 }

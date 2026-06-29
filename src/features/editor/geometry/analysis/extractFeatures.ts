@@ -17,6 +17,9 @@ import {
     evaluateCircleFit
 } from "./circleFit";
 import {
+    evaluateRectangleFit
+} from "./rectangleFit";
+import {
     calculateGeometryBounds
 } from "./geometryMath";
 
@@ -59,6 +62,14 @@ export function extractFeatures(
         cornerIds
     )
 
+    const rectangleFit =
+        evaluateRectangleFit(
+            geometry,
+            anchors,
+            angles,
+            segments
+        );
+
     return {
 
         closed: geometry.closed,
@@ -76,6 +87,8 @@ export function extractFeatures(
         bounds,
 
         circleFit,
+
+        rectangleFit,
 
         angles
     };

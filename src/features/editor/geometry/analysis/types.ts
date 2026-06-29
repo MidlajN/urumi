@@ -86,6 +86,8 @@ export type GeometryFeatures = {
 
     circleFit: CircleFitQuality;
 
+    rectangleFit: RectangleFitQuality;
+
     angles: CornerAngle[];
 };
 
@@ -152,4 +154,30 @@ export type CircleFitQuality = {
     aspectRatio: number;
 
     circumferenceRatio: number;
+};
+
+export type RectangleFitQuality = {
+    valid: boolean;
+
+    corners: Array<{
+        x: number;
+        y: number;
+    }>;
+
+    rebuiltCorners: Array<{
+        x: number;
+        y: number;
+    }>;
+
+    maxAngleError: number;
+
+    averageAngleError: number;
+
+    maxSegmentDeviationRatio: number;
+
+    oppositeParallelError: number;
+
+    oppositeLengthError: number;
+
+    minSideLength: number;
 };

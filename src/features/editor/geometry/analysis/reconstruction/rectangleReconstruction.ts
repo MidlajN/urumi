@@ -5,45 +5,19 @@ import type {
     GeometryFeatures
 } from "../types";
 
-type Bounds = {
-
-    minX: number;
-    minY: number;
-
-    maxX: number;
-    maxY: number;
-};
-
-function calculateBounds(
-    geometry: PathGeometry
-): Bounds {
-
-    const xs = geometry.nodes.map(
-        node => node.x
-    );
-
-    const ys = geometry.nodes.map(
-        node => node.y
-    );
-
-    return {
-
-        minX: Math.min(...xs),
-
-        minY: Math.min(...ys),
-
-        maxX: Math.max(...xs),
-
-        maxY: Math.max(...ys)
-    };
-}
-
 export function rebuildRectangle(
     geometry: PathGeometry,
-    _features: GeometryFeatures
+    features: GeometryFeatures
 ) {
 
-    const bounds = calculateBounds(geometry);
+    const rebuiltCorners =
+        features.rectangleFit.rebuiltCorners;
+
+    if (
+        rebuiltCorners.length !== 4
+    ) {
+        return geometry;
+    }
 
     return {
 
@@ -55,29 +29,29 @@ export function rebuildRectangle(
 
             createCornerNode(
                 new Point(
-                    bounds.minX,
-                    bounds.minY
+                    rebuiltCorners[0].x,
+                    rebuiltCorners[0].y
                 )
             ),
 
             createCornerNode(
                 new Point(
-                    bounds.maxX,
-                    bounds.minY
+                    rebuiltCorners[1].x,
+                    rebuiltCorners[1].y
                 )
             ),
 
             createCornerNode(
                 new Point(
-                    bounds.maxX,
-                    bounds.maxY
+                    rebuiltCorners[2].x,
+                    rebuiltCorners[2].y
                 )
             ),
 
             createCornerNode(
                 new Point(
-                    bounds.minX,
-                    bounds.maxY
+                    rebuiltCorners[3].x,
+                    rebuiltCorners[3].y
                 )
             )
 
