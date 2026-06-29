@@ -411,7 +411,7 @@ const BottomNav = () => {
 
                 <div className="flex h-fit shadow-xl rounded-md">
                     <motion.button 
-                        className="px-5 py-3 bg-white transition-all duration-300 rounded-s-md border border-transparent hover:border-[#1c809681]"
+                        className="px-5 py-3 bg-white transition-all duration-300 rounded-s-lg border border-transparent hover:border-[#1c809681]"
                         whileTap={{ scale: 0.98, background: '#f3f4f6' }}
                         style={{ background: dragMode ? '#22c55e' : '#ffffff' }}
                         onClick={() => {
@@ -473,7 +473,7 @@ const BottomNav = () => {
                         <ZoomOut width={16} height={16} />
                     </motion.button>
                     <motion.button
-                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681] rounded-e-md" 
+                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681] rounded-e-lg" 
                         whileTap={{ scale: 0.95, background: '#f3f4f6' }}
                         onClick={() => { 
                             if (!workspace) return

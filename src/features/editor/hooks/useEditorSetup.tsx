@@ -54,6 +54,10 @@ import {
     type PathGeometry,
     type PathNode
 } from "../geometry/pathModel";
+import { fabricPathToGeometry } from "../geometry/converter/fabricPathToGeometry";
+import { normalizePathCommands } from "../geometry/converter/normalizePathCommands";
+import { useCanvas } from "../canvas/CanvasProvider";
+import { analyzeFreeDrawIntent } from "../geometry/analysis/pipeline";
 
 type Props = {
   canvas: Canvas | null;
@@ -69,6 +73,8 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         fontSize,
         setTool,
     } = useEditorStore();
+
+    const { workspace } = useCanvas();
 
     const fontRef = useRef(fontFamily);
 
@@ -211,6 +217,42 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
 
             const onPathCreated = (e: any) => {
                 e.path.isFreeDraw = true;
+
+                const originalPath = e.path;
+
+                const normalized = normalizePathCommands(
+                    originalPath.path
+                );
+
+                const result = analyzeFreeDrawIntent(
+                    fabricPathToGeometry(
+                        normalized
+                    )
+                );
+
+                const { geometry } = result;
+
+                const geometryPath =
+                    createFabricPathFromGeometry(
+                        geometry,
+                        {
+                            stroke: originalPath.stroke,
+                            strokeWidth: originalPath.strokeWidth,
+                            fill: originalPath.fill
+                        }
+                    );
+
+                workspace?.beginHistoryTransaction();
+
+                canvas.remove(
+                    originalPath
+                );
+
+                canvas.add(
+                    geometryPath
+                );
+
+                workspace?.endHistoryTransaction();
             };
 
             canvas.on("path:created", onPathCreated);

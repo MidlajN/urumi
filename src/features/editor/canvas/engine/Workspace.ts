@@ -699,6 +699,14 @@ export class Workspace {
         return this.viewport.getDragMode();
     }
 
+    beginHistoryTransaction() {
+        this.history.beginTransaction();
+    }
+
+    endHistoryTransaction() {
+        this.history.endTransaction();
+    }
+
     // Event Listener
     on(
         event: string, 
