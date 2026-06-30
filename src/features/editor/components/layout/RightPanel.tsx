@@ -21,7 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { FabricObject } from "fabric";
 
-import { OPERATION_COLORS, useEditorStore } from "../../store/editor.store";
+import { useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import {
     formatMeasurement,
@@ -332,6 +332,7 @@ function OperationSwatches() {
     } = useCanvas();
 
     const {
+        operationColors,
         strokeColor,
         setStrokeColor
     } = useEditorStore();
@@ -454,7 +455,7 @@ function OperationSwatches() {
             }
 
             return (
-                OPERATION_COLORS.find(
+                operationColors.find(
                     (
                         item
                     ) =>
@@ -464,7 +465,8 @@ function OperationSwatches() {
                 "Custom operation"
             );
         }, [
-            selectedColors
+            selectedColors,
+            operationColors
         ]);
 
     const applyOperation =
@@ -533,7 +535,7 @@ function OperationSwatches() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-                {OPERATION_COLORS.map((item) => {
+                {operationColors.map((item) => {
                     const activeColor =
                         selectedOperationColor ??
                         strokeColor.toLowerCase();
@@ -972,73 +974,12 @@ export default function RightPanel() {
             </header>
 
             <div className="flex-1 overflow-y-auto">
-                {/* <PanelSection title="Machine operation">
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-[80px_1fr] items-center gap-3 text-[13px]">
-                            <span className="font-semibold text-zinc-400">
-                                Mode
-                            </span>
-                            <span className="font-semibold text-zinc-900">
-                                Process on baseplate
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-[80px_1fr] items-center gap-3 text-[13px]">
-                            <span className="font-semibold text-zinc-400">
-                                Material
-                            </span>
-                            <span className="font-semibold text-zinc-900">
-                                Unknown Material
-                            </span>
-                        </div>
-                    </div>
-                </PanelSection> */}
-
                 <PanelSection title="Operation color">
                     <OperationSwatches />
                 </PanelSection>
 
                 <ToolSpecificControls />
             </div>
-
-            <footer className="border-t border-zinc-200 p-5">
-                <div className="grid grid-cols-[1fr_104px_40px] gap-3">
-                    <button
-                        type="button"
-                        className="h-10 rounded-md border border-zinc-200 text-[13px] font-semibold text-zinc-400"
-                    >
-                        Preview
-                    </button>
-                    <button
-                        type="button"
-                        className="h-10 rounded-md border border-zinc-300 text-[13px] font-semibold text-zinc-800"
-                    >
-                        Framing
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="More framing options"
-                        className="flex h-10 items-center justify-center rounded-md border border-zinc-300 text-zinc-800"
-                    >
-                        <MoreHorizontal size={19} />
-                    </button>
-                </div>
-
-                <div className="mt-3 grid grid-cols-[1fr_40px]">
-                    <button
-                        type="button"
-                        className="h-11 rounded-l-md bg-zinc-950 text-[14px] font-semibold text-white"
-                    >
-                        Process
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="More process options"
-                        className="flex h-11 items-center justify-center rounded-r-md border-l border-zinc-700 bg-zinc-950 text-white"
-                    >
-                        <MoreHorizontal size={19} />
-                    </button>
-                </div>
-            </footer>
         </aside>
     );
 }

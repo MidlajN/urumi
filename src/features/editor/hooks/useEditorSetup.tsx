@@ -16,7 +16,10 @@ import { Pentagon as PentagonIcon } from "lucide-react";
 import FontFaceObserver from "fontfaceobserver";
 import ReactDOMServer from "react-dom/server";
 
-import { useEditorStore } from "../store/editor.store";
+import {
+    resolveOperationColor,
+    useEditorStore
+} from "../store/editor.store";
 
 import {
     PencilIcon,
@@ -75,6 +78,8 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
     } = useEditorStore();
 
     const { workspace } = useCanvas();
+
+    const operationStrokeColor = resolveOperationColor(strokeColor);
 
     const fontRef = useRef(fontFamily);
 
@@ -207,7 +212,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
 
             canvas.freeDrawingBrush = new PencilBrush(canvas);
 
-            canvas.freeDrawingBrush.color = strokeColor;
+            canvas.freeDrawingBrush.color = operationStrokeColor;
 
             canvas.freeDrawingBrush.width = 2;
 
@@ -236,7 +241,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                     createFabricPathFromGeometry(
                         geometry,
                         {
-                            stroke: originalPath.stroke,
+                            stroke: operationStrokeColor,
                             strokeWidth: originalPath.strokeWidth,
                             fill: originalPath.fill
                         }
@@ -284,8 +289,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                 new PathPreviewRenderer(
                     canvas,
                     {
-                        stroke:
-                            strokeColor
+                        stroke: operationStrokeColor
                     }
                 );
 
@@ -512,7 +516,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                                     fill:
                                         "transparent",
                                     stroke:
-                                        strokeColor,
+                                        operationStrokeColor,
                                     strokeWidth:
                                         2,
                                     selectable:
@@ -1035,7 +1039,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                             width: 0,
                             height: 0,
                             fill: "transparent",
-                            stroke: strokeColor,
+                            stroke: operationStrokeColor,
                             strokeWidth: 2,
                             selectable: false,
                         });
@@ -1048,7 +1052,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                             rx: 0,
                             ry: 0,
                             fill: "transparent",
-                            stroke: strokeColor,
+                            stroke: operationStrokeColor,
                             strokeWidth: 2,
                             selectable: false,
                         });
@@ -1061,7 +1065,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                             width: 0,
                             height: 0,
                             fill: "transparent",
-                            stroke: strokeColor,
+                            stroke: operationStrokeColor,
                             strokeWidth: 2,
                             selectable: false,
                         });
@@ -1072,7 +1076,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                             left: start.x,
                             top: start.y,
                             fill: "transparent",
-                            stroke: strokeColor,
+                            stroke: operationStrokeColor,
                             strokeWidth: 2,
                             selectable: false,
                         });
@@ -1230,7 +1234,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                 const text = new IText("", {
                     left: pointer.x,
                     top: pointer.y,
-                    stroke: strokeColor,
+                    stroke: operationStrokeColor,
                     strokeWidth: 0.5,
                     fill: "transparent",
                     fontFamily: fontRef.current,
@@ -1301,7 +1305,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         canvas,
         activeTool,
         selectedShape,
-        strokeColor,
+        operationStrokeColor,
         fontFamily,
         fontSize,
         setTool,

@@ -34,8 +34,8 @@ export const OPERATION_COLORS = [
         color: "#111827"
     },
     {
-        id: "score",
-        label: "Score",
+        id: "crease",
+        label: "Crease",
         color: "#38bdf8"
     },
     {
@@ -50,11 +50,36 @@ export const OPERATION_COLORS = [
     }
 ] as const;
 
+export type OperationColor =
+    typeof OPERATION_COLORS[number];
+
+export type OperationColorId =
+    OperationColor["id"];
+
+const DEFAULT_OPERATION_COLOR =
+    OPERATION_COLORS[0].color;
+
+export function resolveOperationColor(
+    color: string
+) {
+    return (
+        OPERATION_COLORS.find(
+            (
+                operation
+            ) =>
+                operation.color.toLowerCase() ===
+                color.toLowerCase()
+        )?.color ??
+        DEFAULT_OPERATION_COLOR
+    );
+}
+
 type EditorStore = {
     activeTool: ToolType;
     selectedShape: ShapeType;
 
     strokeColor: string;
+    operationColors: readonly OperationColor[];
     fontFamily: string;
     fontSize: number;
     dimensionsOverlayEnabled: boolean;
@@ -124,7 +149,8 @@ export const useEditorStore =
         activeTool: "select",
         selectedShape: "rectangle",
 
-        strokeColor: "#000000",
+        strokeColor: DEFAULT_OPERATION_COLOR,
+        operationColors: OPERATION_COLORS,
         fontFamily: "BobaMilky",
         fontSize: 40,
         dimensionsOverlayEnabled: true,
@@ -226,7 +252,10 @@ export const useEditorStore =
             strokeColor
         ) =>
             set({
-                strokeColor
+                strokeColor:
+                    resolveOperationColor(
+                        strokeColor
+                    )
             }),
 
         setFontFamily: (
