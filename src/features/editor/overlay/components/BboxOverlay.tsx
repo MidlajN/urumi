@@ -1,4 +1,8 @@
 import MeasurementGuide from "./MeasurementGuide";
+import {
+    Lock,
+    Unlock
+} from "lucide-react";
 import type {
     OverlayCommit,
     SelectionGeometry,
@@ -24,6 +28,7 @@ export default function BboxOverlay({
 }) {
     const {
         viewport,
+        locked
     } = geometry;
 
     const rightGuideLeft =
@@ -73,6 +78,84 @@ export default function BboxOverlay({
 
     return (
         <>
+            <div
+                className={`
+                    pointer-events-none
+                    absolute
+                    border
+                    ${locked
+                        ? "border-zinc-900/70"
+                        : "border-cyan-700/45"}
+                `}
+                style={{
+                    left:
+                        viewport.left,
+                    top:
+                        viewport.top,
+                    width:
+                        viewport.width,
+                    height:
+                        viewport.height
+                }}
+            />
+
+            <button
+                type="button"
+                aria-label={
+                    locked
+                        ? "Unlock object"
+                        : "Lock object"
+                }
+                title={
+                    locked
+                        ? "Unlock object"
+                        : "Lock object"
+                }
+                className={`
+                    pointer-events-auto
+                    absolute
+                    flex
+                    h-7
+                    w-7
+                    items-center
+                    justify-center
+                    rounded-md
+                    border
+                    shadow-sm
+                    transition-colors
+                    ${locked
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"}
+                `}
+                style={{
+                    left:
+                        viewport.left +
+                        viewport.width +
+                        8,
+                    top:
+                        viewport.top -
+                        34
+                }}
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }}
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onCommit({
+                        locked:
+                            !locked
+                    });
+                }}
+            >
+                {locked ? (
+                    <Lock size={14} />
+                ) : (
+                    <Unlock size={14} />
+                )}
+            </button>
+
             <MeasurementGuide
                 ariaLabel="Object width"
                 start={
@@ -92,6 +175,9 @@ export default function BboxOverlay({
                     onCommit({
                         width,
                     })
+                }
+                editable={
+                    !locked
                 }
             />
 
@@ -122,6 +208,9 @@ export default function BboxOverlay({
                     onCommit({
                         height,
                     })
+                }
+                editable={
+                    !locked
                 }
             />
         </>

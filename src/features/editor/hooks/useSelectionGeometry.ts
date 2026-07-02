@@ -17,6 +17,10 @@ import {
     isNodeEditableObject
 } from "../utils/nodeEditing";
 import {
+    isObjectInteractionLocked,
+    setObjectInteractionLocked
+} from "../utils/objectLocking";
+import {
     ANGLE_CONSTRAINT_INCREMENT_DEG
 } from "../geometry/snapConfig";
 import {
@@ -82,6 +86,7 @@ export type LineMeasurement = {
 export type SelectionGeometry = {
     mode: SelectionMode;
     object: FabricObject;
+    locked: boolean;
     x: number;
     y: number;
     width: number;
@@ -99,6 +104,7 @@ type BaseGeometryPatch = Partial<
 >;
 
 export type SelectionGeometryPatch = BaseGeometryPatch & {
+    locked?: boolean;
     length?: number;
     segmentAction?: {
         id: string;
@@ -803,8 +809,14 @@ function readSelectionGeometry(
 
     const bounds = object.getBoundingRect();
 
+    const locked =
+        isObjectInteractionLocked(
+            object
+        );
+
     const mode: SelectionMode =
         selectionMode === "node-edit" &&
+        !locked &&
         isNodeEditableObject(object)
             ? isLineObject(object)
                 ? "line"
@@ -816,6 +828,7 @@ function readSelectionGeometry(
     return {
         mode,
         object,
+        locked,
         x: sceneToMm(bounds.left),
         y: sceneToMm(bounds.top),
         width: sceneToMm(object.getScaledWidth()),
@@ -1975,6 +1988,35 @@ export function useSelectionGeometry(
             return;
         }
 
+        if (
+            typeof patch.locked ===
+            "boolean"
+        ) {
+            setObjectInteractionLocked(
+                object,
+                patch.locked
+            );
+
+            object.setCoords();
+
+            canvas.fire("object:modified", {
+                target: object,
+            });
+
+            canvas.requestRenderAll();
+            setGeometry(readSelectionGeometry(canvas, selectionMode));
+            return;
+        }
+
+        if (
+            isObjectInteractionLocked(
+                object
+            )
+        ) {
+            setGeometry(readSelectionGeometry(canvas, selectionMode));
+            return;
+        }
+
         const nextWidth = cleanNumber(patch.width);
 
         const nextHeight = cleanNumber(patch.height);
@@ -2074,9 +2116,21 @@ export function useSelectionGeometry(
             );
 
             if (segment && startNode && endNode) {
-                const currentLength = distance(startNode.scene, endNode.scene);
+                const currentLength =
+                    mmToScene(
+                        segment.length
+                    );
 
-                if (currentLength > MIN_DIMENSION) {
+                const chordLength =
+                    distance(
+                        startNode.scene,
+                        endNode.scene
+                    );
+
+                if (
+                    currentLength > MIN_DIMENSION &&
+                    chordLength > MIN_DIMENSION
+                ) {
                 const targetLength = mmToScene(nextSegmentLength);
 
                 const ratio = targetLength / currentLength;

@@ -23,6 +23,10 @@ export default function MeasurementGuide({
     side = 1,
     offset = MEASUREMENT_OFFSET,
     visibility = VISIBLE_MEASUREMENT,
+    showGuideLines = true,
+    labelPoint,
+    labelAngle,
+    editable = true,
     onCommit,
 }: {
     start: ViewportPoint;
@@ -32,6 +36,10 @@ export default function MeasurementGuide({
     side?: 1 | -1;
     offset?: number;
     visibility?: MeasurementVisibility;
+    showGuideLines?: boolean;
+    labelPoint?: ViewportPoint;
+    labelAngle?: number;
+    editable?: boolean;
     onCommit: MeasurementCommit;
 }) {
     const guide =
@@ -42,13 +50,16 @@ export default function MeasurementGuide({
             offset,
         });
 
-    if (!visibility.showGuide) {
+    if (
+        !visibility.showGuide &&
+        !visibility.showLabel
+    ) {
         return null;
     }
 
     return (
         <>
-            {guide.extensions.map(
+            {showGuideLines && visibility.showGuide && guide.extensions.map(
                 (
                     extension,
                     index
@@ -73,20 +84,22 @@ export default function MeasurementGuide({
                 )
             )}
 
-            <div
-                className="
-                    absolute
-                    h-px
-                    origin-left
-                    bg-zinc-700/70
-                "
-                style={
-                    lineStyle(
-                        guide.main.start,
-                        guide.main.end
-                    )
-                }
-            />
+            {showGuideLines && visibility.showGuide && (
+                <div
+                    className="
+                        absolute
+                        h-px
+                        origin-left
+                        bg-zinc-700/70
+                    "
+                    style={
+                        lineStyle(
+                            guide.main.start,
+                            guide.main.end
+                        )
+                    }
+                />
+            )}
 
             {visibility.showLabel && (
                 <div
@@ -96,11 +109,17 @@ export default function MeasurementGuide({
                     "
                     style={{
                         left:
-                            guide.label.point.x,
+                            (
+                                labelPoint ??
+                                guide.label.point
+                            ).x,
                         top:
-                            guide.label.point.y,
+                            (
+                                labelPoint ??
+                                guide.label.point
+                            ).y,
                         transform:
-                            `translate(-50%, -50%) rotate(${guide.label.angle}deg)`,
+                            `translate(-50%, -50%) rotate(${labelAngle ?? guide.label.angle}deg)`,
                     }}
                 >
                     <DimensionInput
@@ -109,6 +128,9 @@ export default function MeasurementGuide({
                         }
                         value={
                             value
+                        }
+                        editable={
+                            editable
                         }
                         onCommit={
                             onCommit

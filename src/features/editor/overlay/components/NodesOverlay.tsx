@@ -10,11 +10,63 @@ import type {
     SelectionSegment,
 } from "../types";
 import {
+    getMeasurementVisibility,
     getSegmentMeasurementVisibility
 } from "../utils/measurementVisibility";
 import {
     viewportPointerToScene
 } from "../utils/viewport";
+import {
+    readableAngle
+} from "../utils/geometry";
+
+function getPathViewportLength(
+    path: SelectionSegment["path"]
+) {
+    let length = 0;
+
+    for (let index = 1; index < path.length; index += 1) {
+        const previous =
+            path[index - 1];
+
+        const current =
+            path[index];
+
+        length += Math.hypot(
+            current.x -
+                previous.x,
+            current.y -
+                previous.y
+        );
+    }
+
+    return length;
+}
+
+function getCurveLabelPoint(
+    segment: SelectionSegment
+) {
+    const angle =
+        (
+            segment.angle *
+            Math.PI
+        ) / 180;
+
+    return {
+        x:
+            segment.midpoint.x -
+            Math.sin(
+                angle
+            ) *
+            22,
+        y:
+            segment.midpoint.y +
+            Math.cos(
+                angle
+            ) *
+            22
+    };
+}
 
 function SegmentMeasurement({
     segment,
@@ -23,17 +75,20 @@ function SegmentMeasurement({
     segment: SelectionSegment;
     onCommit: OverlayCommit;
 }) {
-    if (
-        segment.path.length > 2
-    ) {
-        return null;
-    }
+    const isCurve =
+        segment.path.length > 2;
 
     const visibility =
-        getSegmentMeasurementVisibility(
-            segment.start,
-            segment.end
-        );
+        isCurve
+            ? getMeasurementVisibility(
+                getPathViewportLength(
+                    segment.path
+                )
+            )
+            : getSegmentMeasurementVisibility(
+                segment.start,
+                segment.end
+            );
 
     return (
         <MeasurementGuide
@@ -49,6 +104,23 @@ function SegmentMeasurement({
             }
             visibility={
                 visibility
+            }
+            showGuideLines={
+                !isCurve
+            }
+            labelPoint={
+                isCurve
+                    ? getCurveLabelPoint(
+                        segment
+                    )
+                    : undefined
+            }
+            labelAngle={
+                isCurve
+                    ? readableAngle(
+                        segment.angle
+                    )
+                    : undefined
             }
             side={1}
             onCommit={(length) =>

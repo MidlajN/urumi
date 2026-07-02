@@ -10,6 +10,9 @@ import {
 import throttle from "lodash.throttle";
 
 import type { RefObject } from "react";
+import {
+    isObjectInteractionLocked
+} from "../../../utils/objectLocking";
 
 type ToolRef = RefObject<string>;
 
@@ -266,10 +269,14 @@ export class ViewportController {
 
                 this.canvas.getObjects().forEach(obj => {
                     if (
-                        obj.name !== "workspace" && 
-                        obj.hasControls
+                        obj.name !== "workspace"
                     ) {
                         obj.selectable = true;
+                        obj.evented = true;
+                        obj.hasControls =
+                            !isObjectInteractionLocked(
+                                obj
+                            );
                     }
                 });
             }

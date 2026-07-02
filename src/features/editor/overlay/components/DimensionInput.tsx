@@ -16,10 +16,12 @@ const MIN_DIMENSION =
 export default function DimensionInput({
     ariaLabel,
     value,
+    editable = true,
     onCommit,
 }: {
     ariaLabel: string;
     value: number;
+    editable?: boolean;
     onCommit: MeasurementCommit;
 }) {
     const skipBlurCommitRef =
@@ -36,6 +38,16 @@ export default function DimensionInput({
         )
     );
 
+    const [
+        editing,
+        setEditing
+    ] = useState(false);
+
+    const inputRef =
+        useRef<HTMLInputElement>(
+            null
+        );
+
     useEffect(() => {
         setDraft(
             formatMeasurement(
@@ -44,6 +56,17 @@ export default function DimensionInput({
         );
     }, [
         value,
+    ]);
+
+    useEffect(() => {
+        if (!editing) {
+            return;
+        }
+
+        inputRef.current?.focus();
+        inputRef.current?.select();
+    }, [
+        editing
     ]);
 
     const commit =
@@ -67,13 +90,78 @@ export default function DimensionInput({
                         value
                     )
                 );
+                setEditing(
+                    false
+                );
                 return;
             }
 
             onCommit(
                 parsed
             );
+            setEditing(
+                false
+            );
         };
+
+    if (
+        !editing ||
+        !editable
+    ) {
+        return (
+            <button
+                type="button"
+                aria-label={
+                    ariaLabel
+                }
+                className="
+                    rounded-md
+                    bg-transparent
+                    px-2
+                    py-1
+                    text-[11px]
+                    font-semibold
+                    tabular-nums
+                    text-zinc-900
+                    outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-cyan-400
+                    backdrop-blur-[2px] 
+                    transition-all duration-200
+                    disabled:cursor-default
+                    disabled:text-zinc-500
+                    enabled:cursor-text
+                    enabled:hover:bg-white
+                    enabled:hover:shadow-sm
+                "
+                disabled={
+                    !editable
+                }
+                onPointerDown={(event) =>
+                    event.stopPropagation()
+                }
+                onMouseDown={(event) =>
+                    event.stopPropagation()
+                }
+                onClick={(event) => {
+                    event.stopPropagation();
+                    if (!editable) {
+                        return;
+                    }
+                    setEditing(
+                        true
+                    );
+                }}
+            >
+                {formatMeasurement(
+                    value
+                )}
+                <span className="ml-1 text-zinc-500">
+                    mm
+                </span>
+            </button>
+        );
+    }
 
     return (
         <label
@@ -102,6 +190,9 @@ export default function DimensionInput({
             }
         >
             <input
+                ref={
+                    inputRef
+                }
                 aria-label={
                     ariaLabel
                 }
@@ -148,6 +239,9 @@ export default function DimensionInput({
                             formatMeasurement(
                                 value
                             )
+                        );
+                        setEditing(
+                            false
                         );
                         event.currentTarget.blur();
                     }

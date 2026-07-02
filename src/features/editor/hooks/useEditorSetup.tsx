@@ -61,6 +61,9 @@ import { fabricPathToGeometry } from "../geometry/converter/fabricPathToGeometry
 import { normalizePathCommands } from "../geometry/converter/normalizePathCommands";
 import { useCanvas } from "../canvas/CanvasProvider";
 import { analyzeFreeDrawIntent } from "../geometry/analysis/pipeline";
+import {
+    isObjectInteractionLocked
+} from "../utils/objectLocking";
 
 type Props = {
   canvas: Canvas | null;
@@ -165,9 +168,16 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
             canvas.isDrawingMode = false;
 
             canvas.getObjects().forEach((obj) => {
-                if (obj.name !== "workspace") {
+                if (
+                    obj.name !== "workspace"
+                ) {
                     obj.set({
                         selectable: true,
+                        evented: true,
+                        hasControls:
+                            !isObjectInteractionLocked(
+                                obj
+                            ),
                     });
                 }
             });

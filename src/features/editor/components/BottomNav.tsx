@@ -34,6 +34,10 @@ import {
 import {
     useEditorStore
 } from "../store/editor.store";
+import {
+    isObjectInteractionLocked,
+    setObjectInteractionLocked
+} from "../utils/objectLocking";
 
 export default function BottomNav() {
     const {
@@ -227,12 +231,8 @@ export default function BottomNav() {
     const isLayerLocked = (
         object: FabricObject
     ) =>
-        Boolean(
-            object.lockMovementX &&
-            object.lockMovementY &&
-            object.lockScalingX &&
-            object.lockScalingY &&
-            object.lockRotation
+        isObjectInteractionLocked(
+            object
         );
 
     const selectLayer = (
@@ -259,25 +259,10 @@ export default function BottomNav() {
 
         workspace.beginHistoryTransaction();
 
-        object.set({
-            lockMovementX:
-                nextLocked,
-            lockMovementY:
-                nextLocked,
-            lockScalingX:
-                nextLocked,
-            lockScalingY:
-                nextLocked,
-            lockRotation:
-                nextLocked,
-            hasControls:
-                !nextLocked,
-            hoverCursor:
-                nextLocked
-                    ? "not-allowed"
-                    : "move"
-        });
-        object.setCoords();
+        setObjectInteractionLocked(
+            object,
+            nextLocked
+        );
 
         canvas.fire(
             "object:modified",

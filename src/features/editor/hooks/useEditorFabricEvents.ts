@@ -1,9 +1,10 @@
 import {
     useEffect
 } from "react";
-import type {
-    Canvas,
-    FabricObject
+import {
+    ActiveSelection,
+    type Canvas,
+    type FabricObject
 } from "fabric";
 
 import {
@@ -13,6 +14,9 @@ import {
 import {
     isNodeEditableObject
 } from "../utils/nodeEditing";
+import {
+    isObjectInteractionLocked
+} from "../utils/objectLocking";
 
 type FabricTargetEvent = {
     target?: FabricObject | null;
@@ -133,6 +137,85 @@ export function useEditorFabricEvents(
     useEffect(() => {
         if (!canvas) return;
 
+        let isNormalizingSelection =
+            false;
+
+        const normalizeLockedActiveSelection = () => {
+            const activeObject =
+                canvas.getActiveObject();
+
+            if (
+                !(activeObject instanceof ActiveSelection)
+            ) {
+                return activeObject;
+            }
+
+            const selectionObjects =
+                activeObject.getObjects();
+
+            const unlockedObjects =
+                selectionObjects.filter(
+                    (
+                        object
+                    ) =>
+                        !isObjectInteractionLocked(
+                            object
+                        )
+                );
+
+            if (
+                unlockedObjects.length ===
+                selectionObjects.length
+            ) {
+                return activeObject;
+            }
+
+            isNormalizingSelection =
+                true;
+
+            try {
+                canvas.discardActiveObject();
+
+                if (
+                    unlockedObjects.length === 1
+                ) {
+                    const nextObject =
+                        unlockedObjects[0];
+
+                    canvas.setActiveObject(
+                        nextObject
+                    );
+
+                    return nextObject;
+                }
+
+                if (
+                    unlockedObjects.length > 1
+                ) {
+                    const nextSelection =
+                        new ActiveSelection(
+                            unlockedObjects,
+                            {
+                                canvas
+                            }
+                        );
+
+                    canvas.setActiveObject(
+                        nextSelection
+                    );
+
+                    return nextSelection;
+                }
+
+                return null;
+            } finally {
+                isNormalizingSelection =
+                    false;
+
+                canvas.requestRenderAll();
+            }
+        };
+
         const handleDoubleClick = (
             event: FabricTargetEvent
         ) => {
@@ -148,6 +231,9 @@ export function useEditorFabricEvents(
                 !canEnterNodeEditFromMode(
                     editorState.interactionMode,
                     editorState.lastObjectTransformEndedAt
+                ) ||
+                isObjectInteractionLocked(
+                    target
                 ) ||
                 !isNodeEditableObject(
                     target
@@ -168,6 +254,12 @@ export function useEditorFabricEvents(
         };
 
         const handleSelectionCleared = () => {
+            if (
+                isNormalizingSelection
+            ) {
+                return;
+            }
+
             setActiveObjectId(
                 null
             );
@@ -193,7 +285,7 @@ export function useEditorFabricEvents(
 
         const ensureNodeEditableSelection = () => {
             const activeObject =
-                canvas.getActiveObject();
+                normalizeLockedActiveSelection();
 
             setActiveNodeId(
                 null
@@ -210,8 +302,13 @@ export function useEditorFabricEvents(
 
             if (
                 selectionMode === "node-edit" &&
-                !isNodeEditableObject(
-                    activeObject
+                (
+                    isObjectInteractionLocked(
+                        activeObject
+                    ) ||
+                    !isNodeEditableObject(
+                        activeObject
+                    )
                 )
             ) {
                 exitNodeEditMode();
