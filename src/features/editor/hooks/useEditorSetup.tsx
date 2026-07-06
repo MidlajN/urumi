@@ -60,7 +60,10 @@ import {
 import { fabricPathToGeometry } from "../geometry/converter/fabricPathToGeometry";
 import { normalizePathCommands } from "../geometry/converter/normalizePathCommands";
 import { useCanvas } from "../canvas/CanvasProvider";
-import { analyzeFreeDrawIntent } from "../geometry/analysis/pipeline";
+import {
+    analyzeFreeDrawIntent,
+    cleanupGeometry
+} from "../geometry/analysis/pipeline";
 import {
     isObjectInteractionLocked
 } from "../utils/objectLocking";
@@ -73,6 +76,7 @@ type Props = {
 export const useEditorSetup = ({ canvas, toolRef }: Props) => {
     const {
         activeTool,
+        selectedPen,
         selectedShape,
         strokeColor,
         fontFamily,
@@ -239,13 +243,19 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                     originalPath.path
                 );
 
-                const result = analyzeFreeDrawIntent(
+                const baseGeometry =
                     fabricPathToGeometry(
                         normalized
-                    )
-                );
+                    );
 
-                const { geometry } = result;
+                const geometry =
+                    selectedPen === "magic"
+                        ? analyzeFreeDrawIntent(
+                            baseGeometry
+                        ).geometry
+                        : cleanupGeometry(
+                            baseGeometry
+                        );
 
                 const geometryPath =
                     createFabricPathFromGeometry(
@@ -1315,6 +1325,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         canvas,
         activeTool,
         selectedShape,
+        selectedPen,
         operationStrokeColor,
         fontFamily,
         fontSize,

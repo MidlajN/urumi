@@ -13,6 +13,10 @@ export type ShapeType =
     | "triangle"
     | "polygon";
 
+export type PenType =
+    | "magic"
+    | "normal";
+
 export type EditorSelectionMode =
     | "select"
     | "node-edit";
@@ -77,6 +81,7 @@ export function resolveOperationColor(
 type EditorStore = {
     activeTool: ToolType;
     selectedShape: ShapeType;
+    selectedPen: PenType;
 
     strokeColor: string;
     operationColors: readonly OperationColor[];
@@ -129,6 +134,10 @@ type EditorStore = {
         shape: ShapeType
     ) => void;
 
+    setPen: (
+        pen: PenType
+    ) => void;
+
     setStrokeColor: (
         color: string
     ) => void;
@@ -148,6 +157,7 @@ export const useEditorStore =
     create<EditorStore>((set) => ({
         activeTool: "select",
         selectedShape: "rectangle",
+        selectedPen: "magic",
 
         strokeColor: DEFAULT_OPERATION_COLOR,
         operationColors: OPERATION_COLORS,
@@ -246,6 +256,11 @@ export const useEditorStore =
         setShape: (shape) =>
             set({
                 selectedShape: shape
+            }),
+
+        setPen: (pen) =>
+            set({
+                selectedPen: pen
             }),
 
         setStrokeColor: (

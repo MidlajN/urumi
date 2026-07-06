@@ -5,37 +5,36 @@ import {
 
 import MenuItem from "./MenuItem";
 import type {
-    ShapeType
-} from "../../store/editor.store";
-import type {
     LucideIcon
 } from "lucide-react";
 
-type MenuItemType = {
-    id: ShapeType;
+type MenuItemType<T extends string> = {
+    id: T;
     label: string;
     icon: LucideIcon;
 };
 
-type Props = {
+type Props<T extends string> = {
     open: boolean;
-    items: readonly MenuItemType[];
-    selected?: ShapeType;
+    items: readonly MenuItemType<T>[];
+    selected?: T;
+    top?: number;
 
-    onSelect: (id: ShapeType) => void;
+    onSelect: (id: T) => void;
 
     onMouseEnter: () => void;
     onMouseLeave: () => void;
 };
 
-export default function ToolMenu({
+export default function ToolMenu<T extends string>({
     open,
     items,
     selected,
+    top = 210,
     onSelect,
     onMouseEnter,
     onMouseLeave
-}: Props) {
+}: Props<T>) {
 
     return (
         <AnimatePresence>
@@ -52,7 +51,6 @@ export default function ToolMenu({
                     className="
                         absolute
                         left-[74px]
-                        top-[210px]
                         z-[100]
                         w-64
                         rounded-xl
@@ -62,6 +60,9 @@ export default function ToolMenu({
                         shadow-xl
                         p-2
                     "
+                    style={{
+                        top
+                    }}
                 >
                     <div className="flex flex-col gap-1">
                         {items.map((item) => (

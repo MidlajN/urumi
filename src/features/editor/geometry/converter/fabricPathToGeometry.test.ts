@@ -108,6 +108,20 @@ describe(
                 });
 
                 expect(
+                    geometry.nodes[0]
+                        .type
+                ).toBe(
+                    "smooth"
+                );
+
+                expect(
+                    geometry.nodes[1]
+                        .type
+                ).toBe(
+                    "smooth"
+                );
+
+                expect(
                     buildFabricPathData(
                         geometry
                     )
@@ -213,6 +227,69 @@ describe(
                 expect(
                     rebuilt[2][0]
                 ).toBe("C");
+            }
+        );
+
+        it(
+            "infers cusp nodes as corners while preserving handles",
+            () => {
+                const commands = [
+                    ["M", 0, 0],
+                    [
+                        "C",
+                        10,
+                        0,
+                        10,
+                        10,
+                        20,
+                        10
+                    ],
+                    [
+                        "C",
+                        20,
+                        -10,
+                        30,
+                        -10,
+                        40,
+                        0
+                    ]
+                ];
+
+                const geometry =
+                    fabricPathToGeometry(
+                        commands as never
+                    );
+
+                expect(
+                    geometry.nodes[1]
+                        .type
+                ).toBe(
+                    "corner"
+                );
+
+                expect(
+                    geometry.nodes[1]
+                        .handleIn
+                ).toEqual({
+                    x: 10,
+                    y: 10
+                });
+
+                expect(
+                    geometry.nodes[1]
+                        .handleOut
+                ).toEqual({
+                    x: 20,
+                    y: -10
+                });
+
+                expect(
+                    buildFabricPathData(
+                        geometry
+                    )
+                ).toEqual(
+                    commands
+                );
             }
         );
 

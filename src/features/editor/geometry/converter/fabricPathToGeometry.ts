@@ -13,6 +13,109 @@ type FabricCommand =
     | ["C", number, number, number, number, number, number]
     | ["Z"];
 
+const SMOOTH_TANGENT_TOLERANCE_DEG =
+    12;
+
+const HANDLE_EPSILON =
+    0.001;
+
+function handleVectorLength(
+    x: number,
+    y: number
+) {
+    return Math.hypot(
+        x,
+        y
+    );
+}
+
+function isSmoothTangentNode(
+    node: PathNode
+) {
+    if (
+        !node.handleIn ||
+        !node.handleOut
+    ) {
+        return Boolean(
+            node.handleIn ||
+            node.handleOut
+        );
+    }
+
+    const inX =
+        node.x -
+        node.handleIn.x;
+
+    const inY =
+        node.y -
+        node.handleIn.y;
+
+    const outX =
+        node.handleOut.x -
+        node.x;
+
+    const outY =
+        node.handleOut.y -
+        node.y;
+
+    const inLength =
+        handleVectorLength(
+            inX,
+            inY
+        );
+
+    const outLength =
+        handleVectorLength(
+            outX,
+            outY
+        );
+
+    if (
+        inLength < HANDLE_EPSILON ||
+        outLength < HANDLE_EPSILON
+    ) {
+        return false;
+    }
+
+    const dot =
+        (
+            inX * outX +
+            inY * outY
+        ) /
+        (
+            inLength *
+            outLength
+        );
+
+    const tolerance =
+        Math.cos(
+            (
+                SMOOTH_TANGENT_TOLERANCE_DEG *
+                Math.PI
+            ) /
+            180
+        );
+
+    return dot >= tolerance;
+}
+
+function inferNodeTypes(
+    nodes: PathNode[]
+) {
+    nodes.forEach(
+        (
+            node
+        ) => {
+            node.type =
+                isSmoothTangentNode(
+                    node
+                )
+                    ? "smooth"
+                    : "corner";
+        }
+    );
+}
+
 export function fabricPathToGeometry(
     commands: FabricCommand[]
 ): PathGeometry {
@@ -59,12 +162,10 @@ export function fabricPathToGeometry(
                     y: c1y
                 };
 
-                previous.type = "smooth";
-
                 const nextNode: PathNode = {
                     id: createPathNodeId(),
 
-                    type: "smooth",
+                    type: "corner",
 
                     x: ex,
                     y: ey,
@@ -85,6 +186,10 @@ export function fabricPathToGeometry(
             }
         }
     }
+
+    inferNodeTypes(
+        nodes
+    );
 
     return {
         id: createPathNodeId(),

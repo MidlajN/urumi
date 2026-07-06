@@ -1,4 +1,7 @@
 import {
+    useState
+} from "react";
+import {
     useCanvas
 } from "../canvas/CanvasProvider";
 import {
@@ -18,6 +21,7 @@ import {
 } from "../store/editor.store";
 import SelectionDimensionsOverlay from "./SelectionDimensionsOverlay";
 import BottomNav from "./BottomNav";
+import TopTransformToolbar from "./layout/TopTransformToolbar";
 
 export default function EditorCanvas() {
     const {
@@ -26,6 +30,13 @@ export default function EditorCanvas() {
         canvas,
         toolRef
     } = useCanvas();
+
+    const [
+        preserveAspectRatio,
+        setPreserveAspectRatio
+    ] = useState(
+        false
+    );
 
     const dimensionsOverlayEnabled =
         useEditorStore(
@@ -73,12 +84,30 @@ export default function EditorCanvas() {
             className="relative w-full h-full"
         >
             <canvas ref={canvasRef} />
+            <TopTransformToolbar
+                geometry={
+                    geometry
+                }
+                preserveAspectRatio={
+                    preserveAspectRatio
+                }
+                onPreserveAspectRatioChange={
+                    setPreserveAspectRatio
+                }
+                onCommit={
+                    updateGeometry
+                }
+            />
             <SelectionDimensionsOverlay
                 geometry={geometry}
                 measurementsEnabled={
                     dimensionsOverlayEnabled
                 }
                 selectionMode={selectionMode}
+                preserveAspectRatio={
+                    preserveAspectRatio &&
+                    geometry?.mode === "bbox"
+                }
                 onCommit={updateGeometry}
             />
             <BottomNav />

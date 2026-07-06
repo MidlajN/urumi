@@ -23,11 +23,13 @@ from "../toolbar/ToolMenu";
 
 import {
     useEditorStore,
+    type PenType,
     type ShapeType,
     type ToolType
 } from "../../store/editor.store";
 
 import {
+    penTools,
     shapeTools
 } from "../toolbar/tool.config";
 import { useCanvas } from "../../canvas/CanvasProvider";
@@ -35,6 +37,7 @@ import { isNodeEditableObject } from "../../utils/nodeEditing";
 
 
 type MenuType =
+    | "pen"
     | "shape"
     | null;
 
@@ -52,9 +55,11 @@ export default function LeftToolbar() {
 
     const {
         activeTool: tool,
+        selectedPen: pen,
         selectedShape: shape,
         selectionMode,
         setTool,
+        setPen,
         setShape,
         enterNodeEditMode
     } = useEditorStore();
@@ -101,6 +106,15 @@ export default function LeftToolbar() {
         setShape(selectedShape);
 
         setTool("shape");
+
+        clearMenus();
+    };
+
+    const selectPen = (selectedPen: PenType) => {
+
+        setPen(selectedPen);
+
+        setTool("pen");
 
         clearMenus();
     };
@@ -248,26 +262,57 @@ export default function LeftToolbar() {
                 tool="pen"
                 label="Pen"
                 icon={
+                    penTools.find(
+                        (
+                            item
+                        ) =>
+                            item.id ===
+                            pen
+                    )?.icon ??
                     Pencil
                 }
                 active={
                     tool ===
                     "pen"
                 }
+                hasMenu
                 onMouseEnter={() => {
-
-                    if (
-                        !pinnedMenu
-                    ) {
-                        setHoveredMenu(
-                            null
-                        );
-                    }
-                }}
-                onClick={() =>
-                    handleToolSelect(
+                    openMenu(
                         "pen"
                     )
+                }}
+                onMouseLeave={
+                    closeMenu
+                }
+                onClick={() =>
+                    toggleMenu(
+                        "pen"
+                    )
+                }
+            />
+
+            <ToolMenu
+                open={
+                    hoveredMenu ===
+                    "pen"
+                }
+                items={
+                    penTools
+                }
+                selected={
+                    pen
+                }
+                top={112}
+                onSelect={
+                    selectPen
+                }
+                onMouseEnter={() =>
+                    openMenu(
+                        "pen"
+                    )
+                }
+                onMouseLeave={
+                    closeMenu
                 }
             />
 

@@ -5,6 +5,7 @@ import {
     Canvas,
     loadSVGFromString,
     FabricObject,
+    Path,
 } from "fabric";
 
 import FontFaceObserver from "fontfaceobserver";
@@ -17,6 +18,9 @@ import type {
 
 import { ViewportController } from "./modules/ViewportController";
 import { EditorActions } from "./modules/EditorActions";
+import type {
+    ObjectAlignment
+} from "./modules/EditorActions";
 import { HistoryManager } from "./modules/HistoryManager";
 import {
     createRafScheduler
@@ -31,6 +35,18 @@ import {
 import {
     deleteNodeFromObject
 } from "../../utils/nodeEditing";
+import {
+    fabricPathToGeometry
+} from "../../geometry/converter/fabricPathToGeometry";
+import {
+    normalizePathCommands
+} from "../../geometry/converter/normalizePathCommands";
+import type {
+    PathCommand
+} from "../../geometry/converter/types";
+import {
+    setPathGeometry
+} from "../../geometry/pathModel";
 
 
 // ---------------------------------------
@@ -62,6 +78,41 @@ type WorkspaceObject = Rect;
 type ObjectMovingEvent = {
     target: FabricObject;
 };
+
+function attachGeometryToImportedPath(
+    object: FabricObject
+) {
+    if (
+        !(object instanceof Path)
+    ) {
+        return;
+    }
+
+    try {
+        const normalizedCommands =
+            normalizePathCommands(
+                object.path as PathCommand[]
+            );
+
+        const geometry =
+            fabricPathToGeometry(
+                normalizedCommands
+            );
+
+        if (
+            geometry.nodes.length < 2
+        ) {
+            return;
+        }
+
+        setPathGeometry(
+            object,
+            geometry
+        );
+    } catch {
+        // Leave unsupported SVG path data as a normal Fabric path.
+    }
+}
 
 export class Workspace {
 
@@ -343,6 +394,10 @@ export class Workspace {
                     strokeWidth: 2,
                     fill: 'transparent'
                 });
+
+                attachGeometryToImportedPath(
+                    obj
+                );
             });
 
             const svgObj = util.groupSVGElements(
@@ -645,8 +700,18 @@ export class Workspace {
         return this.history.canRedo();
     }
 
+    alignObjects(
+        alignment: ObjectAlignment
+    ): void {
+        this.editor.alignActiveObjects(
+            alignment
+        );
+    }
+
     destroy(): void {
         this.viewport.destroy();
+
+        this.editor.destroy();
 
         this.history.destroy();
 

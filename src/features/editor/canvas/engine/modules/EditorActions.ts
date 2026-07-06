@@ -9,12 +9,27 @@ import {
 
 import type { RefObject } from "react";
 import type { HistoryManager } from "./HistoryManager";
+import {
+    isObjectInteractionLocked
+} from "../../../utils/objectLocking";
 
 type ToolRef = RefObject<string>;
+
+export type ObjectAlignment =
+    | "left"
+    | "horizontal-center"
+    | "right"
+    | "top"
+    | "vertical-center"
+    | "bottom";
 
 type PointObject = {
     x: number;
     y: number;
+};
+
+type SelectionEvent = {
+    selected?: FabricObject[];
 };
 
 type PolygonLike =
@@ -43,6 +58,8 @@ export class EditorActions {
 
     private copiedObject: FabricObject | null = null;
 
+    private selectionOrder: FabricObject[] = [];
+
     constructor(
         canvas: Canvas,
         getWorkspace:() => Rect,
@@ -56,6 +73,342 @@ export class EditorActions {
         this.toolRef = toolRef;
 
         this.history = history
+
+        this.initSelectionOrder();
+    }
+
+    destroy(): void {
+        this.canvas.off(
+            "selection:created",
+            this.handleSelectionChange
+        );
+        this.canvas.off(
+            "selection:updated",
+            this.handleSelectionChange
+        );
+        this.canvas.off(
+            "selection:cleared",
+            this.handleSelectionCleared
+        );
+    }
+
+    private initSelectionOrder(): void {
+        this.canvas.on(
+            "selection:created",
+            this.handleSelectionChange
+        );
+        this.canvas.on(
+            "selection:updated",
+            this.handleSelectionChange
+        );
+        this.canvas.on(
+            "selection:cleared",
+            this.handleSelectionCleared
+        );
+    }
+
+    private getSelectableObjects(
+        objects: FabricObject[]
+    ) {
+        return objects.filter(
+            (
+                object
+            ) =>
+                object.name !== "workspace" &&
+                object.name !== "grid" &&
+                object.name !== "snap-preview"
+        );
+    }
+
+    private handleSelectionChange =
+        (
+            event: SelectionEvent
+        ) => {
+            const currentSelection =
+                this.getSelectableObjects(
+                    this.canvas.getActiveObjects()
+                );
+
+            if (
+                currentSelection.length === 0
+            ) {
+                this.selectionOrder =
+                    [];
+                return;
+            }
+
+            const retained =
+                this.selectionOrder.filter(
+                    (
+                        object
+                    ) =>
+                        currentSelection.includes(
+                            object
+                        )
+                );
+
+            const selectedObjects =
+                this.getSelectableObjects(
+                    event.selected ??
+                    []
+                ).filter(
+                    (
+                        object
+                    ) =>
+                        currentSelection.includes(
+                            object
+                        ) &&
+                        !retained.includes(
+                            object
+                        )
+                );
+
+            const fallbackObjects =
+                currentSelection.filter(
+                    (
+                        object
+                    ) =>
+                        !retained.includes(
+                            object
+                        ) &&
+                        !selectedObjects.includes(
+                            object
+                        )
+                );
+
+            this.selectionOrder = [
+                ...retained,
+                ...selectedObjects,
+                ...fallbackObjects
+            ];
+        };
+
+    private handleSelectionCleared =
+        () => {
+            this.selectionOrder =
+                [];
+        };
+
+    private getOrderedActiveObjects() {
+        const activeObjects =
+            this.getSelectableObjects(
+                this.canvas.getActiveObjects()
+            );
+
+        const retained =
+            this.selectionOrder.filter(
+                (
+                    object
+                ) =>
+                    activeObjects.includes(
+                        object
+                    )
+            );
+
+        const missing =
+            activeObjects.filter(
+                (
+                    object
+                ) =>
+                    !retained.includes(
+                        object
+                    )
+            );
+
+        const ordered = [
+            ...retained,
+            ...missing
+        ];
+
+        this.selectionOrder =
+            ordered;
+
+        return ordered;
+    }
+
+    private alignObjectToBounds(
+        object: FabricObject,
+        anchorBounds: ReturnType<FabricObject["getBoundingRect"]>,
+        alignment: ObjectAlignment
+    ) {
+        const objectBounds =
+            object.getBoundingRect();
+
+        const leftOffset =
+            (
+                object.left ??
+                0
+            ) -
+            objectBounds.left;
+
+        const topOffset =
+            (
+                object.top ??
+                0
+            ) -
+            objectBounds.top;
+
+        switch (alignment) {
+            case "left":
+                object.set({
+                    left:
+                        anchorBounds.left +
+                        leftOffset
+                });
+                break;
+            case "horizontal-center":
+                object.set({
+                    left:
+                        anchorBounds.left +
+                        anchorBounds.width / 2 +
+                        leftOffset -
+                        objectBounds.width / 2
+                });
+                break;
+            case "right":
+                object.set({
+                    left:
+                        anchorBounds.left +
+                        anchorBounds.width +
+                        leftOffset -
+                        objectBounds.width
+                });
+                break;
+            case "top":
+                object.set({
+                    top:
+                        anchorBounds.top +
+                        topOffset
+                });
+                break;
+            case "vertical-center":
+                object.set({
+                    top:
+                        anchorBounds.top +
+                        anchorBounds.height / 2 +
+                        topOffset -
+                        objectBounds.height / 2
+                });
+                break;
+            case "bottom":
+                object.set({
+                    top:
+                        anchorBounds.top +
+                        anchorBounds.height +
+                        topOffset -
+                        objectBounds.height
+                });
+                break;
+            default:
+                break;
+        }
+
+        object.setCoords();
+    }
+
+    alignActiveObjects(
+        alignment: ObjectAlignment
+    ): void {
+        const orderedObjects =
+            this.getOrderedActiveObjects();
+
+        if (
+            orderedObjects.length === 0
+        ) {
+            return;
+        }
+
+        const anchorObject =
+            orderedObjects[0];
+
+        const multiObject =
+            orderedObjects.length > 1;
+
+        const anchorBounds =
+            multiObject
+                ? anchorObject.getBoundingRect()
+                : this.getWorkspace()
+                    .getBoundingRect();
+
+        const targets =
+            multiObject
+                ? orderedObjects.slice(1)
+                : orderedObjects;
+
+        const editableTargets =
+            targets.filter(
+                (
+                    object
+                ) =>
+                    !isObjectInteractionLocked(
+                        object
+                    )
+            );
+
+        if (
+            editableTargets.length === 0
+        ) {
+            return;
+        }
+
+        this.history.beginTransaction();
+
+        editableTargets.forEach(
+            (
+                object
+            ) =>
+                this.alignObjectToBounds(
+                    object,
+                    anchorBounds,
+                    alignment
+                )
+        );
+
+        this.history.endTransaction();
+
+        if (
+            orderedObjects.length > 1
+        ) {
+            this.canvas.discardActiveObject();
+
+            const selection =
+                new ActiveSelection(
+                    orderedObjects,
+                    {
+                        canvas:
+                            this.canvas
+                    }
+                );
+
+            this.canvas.setActiveObject(
+                selection
+            );
+        } else {
+            this.canvas.setActiveObject(
+                orderedObjects[0]
+            );
+        }
+
+        this.selectionOrder =
+            orderedObjects;
+
+        const activeObject =
+            this.canvas.getActiveObject();
+
+        if (activeObject) {
+            activeObject.setCoords();
+        }
+
+        this.canvas.fire(
+            "object:modified",
+            {
+                target:
+                    activeObject ??
+                    editableTargets[0]
+            }
+        );
+
+        this.canvas.requestRenderAll();
     }
 
     moveActiveObject( dx: number, dy: number): void {

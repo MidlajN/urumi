@@ -20,10 +20,12 @@ const HEIGHT_LABEL_WIDTH =
 export default function BboxOverlay({
     geometry,
     overlayWidth,
+    preserveAspectRatio,
     onCommit,
 }: {
     geometry: SelectionGeometry;
     overlayWidth: number;
+    preserveAspectRatio: boolean;
     onCommit: OverlayCommit;
 }) {
     const {
@@ -43,6 +45,48 @@ export default function BboxOverlay({
             LABEL_OFFSET +
             HEIGHT_LABEL_WIDTH <=
             overlayWidth;
+
+    const aspectRatio =
+        geometry.height > 0
+            ? geometry.width /
+                geometry.height
+            : null;
+
+    const commitWidth =
+        (
+            width: number
+        ) => {
+            onCommit(
+                preserveAspectRatio &&
+                aspectRatio
+                    ? {
+                        width,
+                        height:
+                            width / aspectRatio
+                    }
+                    : {
+                        width
+                    }
+            );
+        };
+
+    const commitHeight =
+        (
+            height: number
+        ) => {
+            onCommit(
+                preserveAspectRatio &&
+                aspectRatio
+                    ? {
+                        height,
+                        width:
+                            height * aspectRatio
+                    }
+                    : {
+                        height
+                    }
+            );
+        };
 
     const topLeft = {
         x:
@@ -171,10 +215,8 @@ export default function BboxOverlay({
                 offset={
                     DIMENSION_OFFSET
                 }
-                onCommit={(width) =>
-                    onCommit({
-                        width,
-                    })
+                onCommit={
+                    commitWidth
                 }
                 editable={
                     !locked
@@ -204,10 +246,8 @@ export default function BboxOverlay({
                 offset={
                     DIMENSION_OFFSET
                 }
-                onCommit={(height) =>
-                    onCommit({
-                        height,
-                    })
+                onCommit={
+                    commitHeight
                 }
                 editable={
                     !locked

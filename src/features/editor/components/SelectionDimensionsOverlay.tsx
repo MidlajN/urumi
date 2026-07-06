@@ -19,6 +19,7 @@ type Props = {
     geometry: SelectionGeometry | null;
     measurementsEnabled: boolean;
     selectionMode: EditorSelectionMode;
+    preserveAspectRatio: boolean;
     onCommit: (
         patch: SelectionGeometryPatch
     ) => void;
@@ -28,6 +29,7 @@ export default function SelectionDimensionsOverlay({
     geometry,
     measurementsEnabled,
     selectionMode,
+    preserveAspectRatio,
     onCommit,
 }: Props) {
     const overlayRef =
@@ -138,6 +140,9 @@ export default function SelectionDimensionsOverlay({
                     }
                     overlayWidth={
                         overlayWidth
+                    }
+                    preserveAspectRatio={
+                        preserveAspectRatio
                     }
                     onCommit={
                         onCommit

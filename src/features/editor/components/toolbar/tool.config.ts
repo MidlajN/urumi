@@ -7,6 +7,7 @@ import {
     Circle,
     Triangle,
     Pentagon,
+    WandSparkles,
     Upload
 } from "lucide-react";
 
@@ -53,6 +54,19 @@ export const shapeTools = [
         id: "polygon",
         label: "Polygon",
         icon: Pentagon
+    }
+] as const;
+
+export const penTools = [
+    {
+        id: "magic",
+        label: "Magical Pen",
+        icon: WandSparkles
+    },
+    {
+        id: "normal",
+        label: "Normal Pen",
+        icon: Pencil
     }
 ] as const;
 
