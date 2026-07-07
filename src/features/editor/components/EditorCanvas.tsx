@@ -22,18 +22,28 @@ import {
 import SelectionDimensionsOverlay from "./SelectionDimensionsOverlay";
 import BottomNav from "./BottomNav";
 import TopTransformToolbar from "./layout/TopTransformToolbar";
+import ReferenceControls from "../../companion/components/ReferenceControls";
+import CompanionQrModal from "../../companion/components/CompanionQrModal";
 
 export default function EditorCanvas() {
     const {
         containerRef,
         canvasRef,
         canvas,
-        toolRef
+        toolRef,
+        companion
     } = useCanvas();
 
     const [
         preserveAspectRatio,
         setPreserveAspectRatio
+    ] = useState(
+        false
+    );
+
+    const [
+        companionModalOpen,
+        setCompanionModalOpen
     ] = useState(
         false
     );
@@ -109,6 +119,31 @@ export default function EditorCanvas() {
                     geometry?.mode === "bbox"
                 }
                 onCommit={updateGeometry}
+            />
+            <ReferenceControls
+                manager={
+                    companion
+                }
+                onReplace={() => {
+                    setCompanionModalOpen(
+                        true
+                    );
+                    void companion?.createReferenceSession();
+                }}
+            />
+            <CompanionQrModal
+                manager={
+                    companion
+                }
+                open={
+                    companionModalOpen
+                }
+                onClose={() => {
+                    companion?.closeReferenceSession();
+                    setCompanionModalOpen(
+                        false
+                    );
+                }}
             />
             <BottomNav />
         </div>

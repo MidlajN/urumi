@@ -19,6 +19,9 @@ import type { Canvas } from "fabric";
 import { Workspace } from "./engine/Workspace";
 import CanvasRuler from "./plugins/workspace/ruler";
 import CanvasGrid from "./plugins/workspace/grid";
+import {
+    CompanionManager
+} from "../../companion/CompanionManager";
 
 
 
@@ -36,6 +39,7 @@ type CanvasContextType = {
     containerRef: RefObject<HTMLDivElement | null>;
     toolRef: RefObject<string>;
     workspace: Workspace | null;
+    companion: CompanionManager | null;
     canvasConfig: CanvasConfig;
     setCanvasConfig: Dispatch<
         SetStateAction<CanvasConfig>
@@ -70,6 +74,8 @@ export function CanvasProvider({
     const toolRef = useRef("Select");
 
     const [workspace, setWorkspace] = useState<Workspace | null>(null);
+
+    const [companion, setCompanion] = useState<CompanionManager | null>(null);
 
     const [canvas, setCanvas] = useState<Canvas | null>(null);
 
@@ -117,6 +123,17 @@ export function CanvasProvider({
 
         setCanvas(fabricCanvas);
 
+        const companionManager =
+            new CompanionManager(
+                fabricCanvas,
+                () =>
+                    workspaceInstance.getWorkspace()
+            );
+
+        setCompanion(
+            companionManager
+        );
+
         const ruler = new CanvasRuler(
             fabricCanvas,
             workspaceRect
@@ -128,6 +145,7 @@ export function CanvasProvider({
         // const parsedCanvas = JSON.parse(savedCanvas);
 
         return () => {
+            companionManager.destroy();
             workspaceInstance?.destroy();
         };
 
@@ -141,6 +159,7 @@ export function CanvasProvider({
                 containerRef,
                 toolRef,
                 workspace,
+                companion,
                 canvasConfig,
                 setCanvasConfig
             }}

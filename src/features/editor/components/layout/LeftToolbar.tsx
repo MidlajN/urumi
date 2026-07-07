@@ -12,7 +12,8 @@ import {
     PenLine,
     Pencil,
     SplinePointer,
-    Upload
+    Upload,
+    Camera
 } from "lucide-react";
 
 import ToolButton
@@ -34,6 +35,7 @@ import {
 } from "../toolbar/tool.config";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import { isNodeEditableObject } from "../../utils/nodeEditing";
+import CompanionQrModal from "../../../companion/components/CompanionQrModal";
 
 
 type MenuType =
@@ -43,7 +45,7 @@ type MenuType =
 
 export default function LeftToolbar() {
 
-    const { canvas, workspace } = useCanvas()
+    const { canvas, workspace, companion } = useCanvas()
     
     const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +54,13 @@ export default function LeftToolbar() {
     const [ hoveredMenu, setHoveredMenu ] = useState<MenuType>(null);
 
     const [ pinnedMenu, setPinnedMenu ] = useState<MenuType>(null);
+
+    const [
+        companionModalOpen,
+        setCompanionModalOpen
+    ] = useState(
+        false
+    );
 
     const {
         activeTool: tool,
@@ -185,23 +194,35 @@ export default function LeftToolbar() {
         canvas?.requestRenderAll();
     };
 
+    const handleCompanionReferenceSelect = () => {
+        clearMenus();
+        setTool(
+            "select"
+        );
+        setCompanionModalOpen(
+            true
+        );
+        void companion?.createReferenceSession();
+    };
+
     return (
-        <div
-            ref={toolbarRef}
-            className="
-                relative
-                w-16
-                bg-white
-                border-r
-                border-zinc-200
-                flex
-                flex-col
-                items-center
-                py-3
-                gap-2
-                z-50
-            "
-        >
+        <>
+            <div
+                ref={toolbarRef}
+                className="
+                    relative
+                    w-16
+                    bg-white
+                    border-r
+                    border-zinc-200
+                    flex
+                    flex-col
+                    items-center
+                    py-3
+                    gap-2
+                    z-50
+                "
+            >
 
             {/* SELECT */}
             <ToolButton
@@ -379,6 +400,28 @@ export default function LeftToolbar() {
                 "
             />
 
+            {/* COMPANION CAMERA */}
+            <ToolButton
+                tool="companion-reference"
+                label="Capture Bed"
+                icon={
+                    Camera
+                }
+                onMouseEnter={() => {
+
+                    if (
+                        !pinnedMenu
+                    ) {
+                        setHoveredMenu(
+                            null
+                        );
+                    }
+                }}
+                onClick={
+                    handleCompanionReferenceSelect
+                }
+            />
+
             {/* SHAPES */}
             <ToolButton
                 tool="shape"
@@ -473,6 +516,22 @@ export default function LeftToolbar() {
                 accept=".svg"
                 onChange={ handleImport }
             />
-        </div>
+            </div>
+
+            <CompanionQrModal
+                manager={
+                    companion
+                }
+                open={
+                    companionModalOpen
+                }
+                onClose={() => {
+                    companion?.closeReferenceSession();
+                    setCompanionModalOpen(
+                        false
+                    );
+                }}
+            />
+        </>
     );
 }
