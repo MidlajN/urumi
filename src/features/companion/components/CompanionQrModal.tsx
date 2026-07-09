@@ -1,4 +1,6 @@
 import {
+    CheckCircle2,
+    SlidersHorizontal,
     X
 } from "lucide-react";
 import {
@@ -19,6 +21,7 @@ import type {
 import type {
     CompanionState
 } from "../types";
+import ReferenceAdjustmentModal from "./ReferenceAdjustmentModal";
 
 const initialState: CompanionState = {
     status:
@@ -53,6 +56,13 @@ export default function CompanionQrModal({
         setState
     ] = useState(
         initialState
+    );
+
+    const [
+        adjustmentOpen,
+        setAdjustmentOpen
+    ] = useState(
+        false
     );
 
     useEffect(() => {
@@ -91,6 +101,10 @@ export default function CompanionQrModal({
     const missingConfig =
         !COMPANION_APP_URL;
 
+    const received =
+        state.status ===
+        "received";
+
     const statusLabel =
         state.status === "creating"
             ? "Creating session"
@@ -107,139 +121,228 @@ export default function CompanionQrModal({
                                 : "Ready";
 
     return (
-        <div
-            className="
-                fixed
-                inset-0
-                z-200
-                flex
-                items-center
-                justify-center
-                bg-zinc-950/30
-                px-4
-            "
-            onMouseDown={(event) => {
-                if (
-                    event.target ===
-                    event.currentTarget
-                ) {
-                    onClose();
-                }
-            }}
-        >
+        <>
             <div
                 className="
+                    fixed
+                    inset-0
+                    z-200
+                    flex
+                    items-center
+                    justify-center
+                    bg-zinc-950/30
+                    px-4
+                "
+                onMouseDown={(event) => {
+                    if (
+                        event.target ===
+                        event.currentTarget
+                    ) {
+                        onClose();
+                    }
+                }}
+            >
+            <div
+                className={`
                     w-full
-                    max-w-sm
+                    ${received
+                        ? "max-w-sm"
+                        : "max-w-sm"}
+                    max-h-[calc(100vh-32px)]
+                    overflow-hidden
                     rounded-xl
                     border
                     border-zinc-200
                     bg-white
-                    p-4
                     shadow-2xl
-                "
+                `}
             >
-                <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
                     <div>
                         <h2 className="text-[15px] font-semibold text-zinc-950">
-                            Capture Bed Reference
+                            {received
+                                ? "Reference Received"
+                                : "Capture Bed Reference"}
                         </h2>
                         <p className="mt-1 text-[12px] font-medium text-zinc-500">
-                            Scan from the companion app
+                            {received
+                                ? "Correct perspective before continuing"
+                                : "Scan from the companion app"}
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        aria-label="Close companion modal"
-                        onClick={
-                            onClose
-                        }
-                        className="
-                            flex
-                            h-8
-                            w-8
-                            items-center
-                            justify-center
-                            rounded-md
-                            text-zinc-500
-                            hover:bg-zinc-100
-                            hover:text-zinc-900
-                        "
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-                    {missingConfig ? (
-                        <div className="rounded-md bg-white px-3 py-4 text-center text-[13px] font-medium text-zinc-700">
-                            Set VITE_COMPANION_APP_URL to enable QR pairing.
-                        </div>
-                    ) : referenceUrl ? (
-                        <div className="flex justify-center rounded-md bg-white p-3">
-                            <QRCodeSVG
-                                value={
-                                    referenceUrl
+                    <div className="flex items-center gap-1">
+                        {received && (
+                            <button
+                                type="button"
+                                aria-label="Adjust reference perspective"
+                                title="Adjust reference perspective"
+                                onClick={() =>
+                                    setAdjustmentOpen(
+                                        true
+                                    )
                                 }
-                                size={192}
-                                level="M"
-                            />
-                        </div>
-                    ) : (
-                        <div className="flex h-54.5 items-center justify-center rounded-md bg-white text-[13px] font-medium text-zinc-500">
-                            Preparing session...
-                        </div>
-                    )}
-                </div>
+                                className="
+                                    flex
+                                    h-8
+                                    w-8
+                                    items-center
+                                    justify-center
+                                    rounded-md
+                                    text-zinc-500
+                                    hover:bg-zinc-100
+                                    hover:text-zinc-900
+                                "
+                            >
+                                <SlidersHorizontal size={16} />
+                            </button>
+                        )}
 
-                <div className="mt-4 rounded-md bg-zinc-50 px-3 py-2">
-                    <div className="flex items-center justify-between text-[12px] font-semibold">
-                        <span className="text-zinc-500">
-                            Status
-                        </span>
-                        <span className="text-zinc-900">
-                            {statusLabel}
-                        </span>
+                        <button
+                            type="button"
+                            aria-label="Close companion modal"
+                            onClick={
+                                onClose
+                            }
+                            className="
+                                flex
+                                h-8
+                                w-8
+                                items-center
+                                justify-center
+                                rounded-md
+                                text-zinc-500
+                                hover:bg-zinc-100
+                                hover:text-zinc-900
+                            "
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
-                    {referenceUrl && (
-                        <div className="mt-2 truncate text-[11px] font-medium text-zinc-400">
-                            {referenceUrl}
-                        </div>
-                    )}
-                    {state.peerId && (
-                        <div className="mt-1 truncate text-[11px] font-medium text-zinc-400">
-                            peerId: {state.peerId}
-                        </div>
-                    )}
-                    {state.error && (
-                        <div className="mt-2 text-[12px] font-medium text-red-600">
-                            {state.error}
-                        </div>
-                    )}
                 </div>
 
-                <button
-                    type="button"
-                    onClick={
-                        onClose
-                    }
-                    className="
-                        mt-4
-                        h-9
-                        w-full
-                        rounded-md
-                        border
-                        border-zinc-200
-                        text-[13px]
-                        font-semibold
-                        text-zinc-700
-                        hover:bg-zinc-50
-                    "
-                >
-                    Cancel
-                </button>
+                {received ? (
+                    <div className="p-4">
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
+                                <CheckCircle2 size={24} />
+                            </div>
+                            <div className="mt-3 text-[15px] font-semibold text-zinc-950">
+                                Image received
+                            </div>
+                            <p className="mx-auto mt-2 max-w-xs text-[12px] leading-5 text-emerald-700">
+                                The reference layer has been added to the editor.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={
+                                onClose
+                            }
+                            className="
+                                mt-4
+                                h-9
+                                w-full
+                                rounded-md
+                                border
+                                border-zinc-200
+                                text-[13px]
+                                font-semibold
+                                text-zinc-700
+                                hover:bg-zinc-50
+                            "
+                        >
+                            Done
+                        </button>
+                        </div>
+                ) : (
+                    <div className="p-4">
+                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+                            {missingConfig ? (
+                                <div className="rounded-md bg-white px-3 py-4 text-center text-[13px] font-medium text-zinc-700">
+                                    Set VITE_COMPANION_APP_URL to enable QR pairing.
+                                </div>
+                            ) : referenceUrl ? (
+                                <div className="flex justify-center rounded-md bg-white p-3">
+                                    <QRCodeSVG
+                                        value={
+                                            referenceUrl
+                                        }
+                                        size={192}
+                                        level="M"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex h-54.5 items-center justify-center rounded-md bg-white text-[13px] font-medium text-zinc-500">
+                                    Preparing session...
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-4 rounded-md bg-zinc-50 px-3 py-2">
+                            <div className="flex items-center justify-between text-[12px] font-semibold">
+                                <span className="text-zinc-500">
+                                    Status
+                                </span>
+                                <span className="text-zinc-900">
+                                    {statusLabel}
+                                </span>
+                            </div>
+                            {referenceUrl && (
+                                <div className="mt-2 truncate text-[11px] font-medium text-zinc-400">
+                                    {referenceUrl}
+                                </div>
+                            )}
+                            {state.peerId && (
+                                <div className="mt-1 truncate text-[11px] font-medium text-zinc-400">
+                                    peerId: {state.peerId}
+                                </div>
+                            )}
+                            {state.error && (
+                                <div className="mt-2 text-[12px] font-medium text-red-600">
+                                    {state.error}
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={
+                                onClose
+                            }
+                            className="
+                                mt-4
+                                h-9
+                                w-full
+                                rounded-md
+                                border
+                                border-zinc-200
+                                text-[13px]
+                                font-semibold
+                                text-zinc-700
+                                hover:bg-zinc-50
+                            "
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
+            <ReferenceAdjustmentModal
+                manager={
+                    manager
+                }
+                open={
+                    adjustmentOpen
+                }
+                onClose={() =>
+                    setAdjustmentOpen(
+                        false
+                    )
+                }
+            />
+        </>
     );
 }

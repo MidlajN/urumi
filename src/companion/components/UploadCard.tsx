@@ -8,9 +8,11 @@ import {
 
 export default function UploadCard({
     disabled,
+    compact = false,
     onFile
 }: {
     disabled?: boolean;
+    compact?: boolean;
     onFile: (
         file: File
     ) => void;
@@ -49,7 +51,9 @@ export default function UploadCard({
                 rounded-2xl
                 border
                 border-dashed
-                p-5
+                ${compact
+                    ? "p-4"
+                    : "p-5"}
                 text-center
                 ${dragging
                     ? "border-zinc-900 bg-zinc-100"
@@ -77,16 +81,28 @@ export default function UploadCard({
                 );
             }}
         >
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
-                <Upload size={22} />
-            </div>
+            {!compact && (
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+                    <Upload size={22} />
+                </div>
+            )}
 
-            <h2 className="text-[17px] font-semibold text-zinc-950">
-                Upload bed photo
+            <h2
+                className={
+                    compact
+                        ? "text-[14px] font-semibold text-zinc-950"
+                        : "text-[17px] font-semibold text-zinc-950"
+                }
+            >
+                {compact
+                    ? "Use existing image"
+                    : "Upload bed photo"}
             </h2>
-            <p className="mx-auto mt-2 max-w-xs text-[13px] leading-5 text-zinc-500">
-                Choose a clear image of the machine bed. The image will be resized before transfer.
-            </p>
+            {!compact && (
+                <p className="mx-auto mt-2 max-w-xs text-[13px] leading-5 text-zinc-500">
+                    Choose a clear image of the machine bed. The image will be resized before transfer.
+                </p>
+            )}
 
             <button
                 type="button"
@@ -96,19 +112,21 @@ export default function UploadCard({
                 onClick={() =>
                     inputRef.current?.click()
                 }
-                className="
-                    mt-5
+                className={`
+                    ${compact
+                        ? "mt-3 border border-zinc-200 text-zinc-700 disabled:text-zinc-300"
+                        : "mt-5 bg-zinc-950 text-white disabled:bg-zinc-300"}
                     h-11
                     w-full
                     rounded-lg
-                    bg-zinc-950
                     text-[14px]
                     font-semibold
-                    text-white
-                    disabled:bg-zinc-300
-                "
+                `}
             >
-                Choose Image
+                <span className="inline-flex items-center justify-center gap-2">
+                    <Upload size={16} />
+                    Choose Image
+                </span>
             </button>
 
             <input

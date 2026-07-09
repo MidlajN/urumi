@@ -18,7 +18,8 @@ export const setFabricDefaults = (): void => {
   FabricObject.customProperties = [
     'id',
     'name',
-    'isFreeDraw'
+    'isFreeDraw',
+    'manufacturing'
   ];
 
   FabricObject.ownDefaults.originY = 'top'

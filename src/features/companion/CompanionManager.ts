@@ -18,6 +18,7 @@ import {
 import {
     COMPANION_PROTOCOL_VERSION,
     type CompanionInboundMessage,
+    type CompanionReferenceImageMessage,
     type CompanionState,
     type CompanionStateListener
 } from "./types";
@@ -207,6 +208,41 @@ export class CompanionManager {
     resetReference() {
         this.referenceLayer.reset();
         this.syncReferenceState();
+    }
+
+    getReferenceSource() {
+        return this.referenceLayer.getSource();
+    }
+
+    async replaceReferenceSource(
+        message: CompanionReferenceImageMessage
+    ) {
+        this.setState({
+            status:
+                "receiving",
+            error:
+                null
+        });
+
+        try {
+            await this.referenceLayer.replaceSource(
+                message
+            );
+
+            this.syncReferenceState({
+                status:
+                    "received"
+            });
+        } catch (error) {
+            this.setState({
+                status:
+                    "error",
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to update reference image"
+            });
+        }
     }
 
     subscribe(

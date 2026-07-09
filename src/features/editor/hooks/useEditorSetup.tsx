@@ -67,6 +67,7 @@ import {
 import {
     isObjectInteractionLocked
 } from "../utils/objectLocking";
+import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
 
 type Props = {
   canvas: Canvas | null;
@@ -128,6 +129,10 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         const isEditableText = (obj: FabricObject): obj is IText => obj.type === "i-text";
 
         const finalizeCreatedObject = (object: FabricObject) => {
+            ensureManufacturingMetadata(
+                object
+            )
+
             object.set({
                 selectable: true,
             });

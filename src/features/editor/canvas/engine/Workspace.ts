@@ -47,6 +47,7 @@ import type {
 import {
     setPathGeometry
 } from "../../geometry/pathModel";
+import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
 
 
 // ---------------------------------------
@@ -389,6 +390,11 @@ export class Workspace {
             )
 
             objects.forEach(obj => {
+
+                ensureManufacturingMetadata(
+                    obj
+                )
+
                 obj.set({
                     stroke: color,
                     strokeWidth: 2,
@@ -404,6 +410,10 @@ export class Workspace {
                 objects, 
                 loadedSvg.options
             );
+
+            ensureManufacturingMetadata(
+                svgObj
+            )
 
             if (point) {
                 svgObj.set({

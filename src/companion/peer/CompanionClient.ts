@@ -60,24 +60,6 @@ export class CompanionClient {
             reliable: true,
         });
 
-
-        console.log(connection);
-
-        console.log(connection.peer);
-        console.log(connection.connectionId);
-        console.log(connection.open);
-
-        console.log((connection as any)._negotiator);
-        console.log((connection as any).peerConnection);
-        console.log((connection as any)._peerConnection);
-
-        console.log("Connection object", connection);
-        console.log("Initially open?", connection.open);
-
-        connection.on("open", () => {
-            console.log("OPEN EVENT");
-        });
-
         setInterval(() => {
             console.log("Polling open:", connection.open);
         }, 1000);
@@ -98,45 +80,45 @@ export class CompanionClient {
         this.connection = connection;
 
         await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-            cleanup();
-            reject(new Error("Unable to connect to the editor."));
-        }, 15000);
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                reject(new Error("Unable to connect to the editor."));
+            }, 15000);
 
-        const handleData = (data: unknown) => {
-            const desktopMessage = data as DesktopMessage;
+            const handleData = (data: unknown) => {
+                const desktopMessage = data as DesktopMessage;
 
-            if (
-            desktopMessage.version === PROTOCOL_VERSION &&
-            desktopMessage.type === "ready"
-            ) {
-            cleanup();
-            resolve();
-            }
-        };
+                if (
+                    desktopMessage.version === PROTOCOL_VERSION &&
+                    desktopMessage.type === "ready"
+                ) {
+                    cleanup();
+                    resolve();
+                }
+            };
 
-        const handleError = (error: Error) => {
-            cleanup();
-            reject(error);
-        };
+            const handleError = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
 
-        const handleClose = () => {
-            cleanup();
-            reject(new Error("The editor disconnected before pairing completed."));
-        };
+            const handleClose = () => {
+                cleanup();
+                reject(new Error("The editor disconnected before pairing completed."));
+            };
 
-        const cleanup = () => {
-            window.clearTimeout(timeout);
-            connection.off("data", handleData);
-            connection.off("error", handleError);
-            connection.off("close", handleClose);
-        };
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                connection.off("data", handleData);
+                connection.off("error", handleError);
+                connection.off("close", handleClose);
+            };
 
-        connection.on("data", handleData);
+            connection.on("data", handleData);
 
-        connection.once("error", handleError);
+            connection.once("error", handleError);
 
-        connection.once("close", handleClose);
+            connection.once("close", handleClose);
         });
     }
 

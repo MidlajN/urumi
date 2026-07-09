@@ -7,6 +7,7 @@ import {
     useMemo
 } from "react";
 
+import CameraCapture from "../components/CameraCapture";
 import ImagePreview from "../components/ImagePreview";
 import TransferProgress from "../components/TransferProgress";
 import UploadCard from "../components/UploadCard";
@@ -183,14 +184,25 @@ export default function ReferenceCapturePage() {
                     }
                 />
             ) : (
-                <UploadCard
-                    disabled={
-                        status === "error"
-                    }
-                    onFile={
-                        selectFile
-                    }
-                />
+                <div className="space-y-4">
+                    <CameraCapture
+                        disabled={
+                            status === "error"
+                        }
+                        onFile={
+                            selectFile
+                        }
+                    />
+                    <UploadCard
+                        disabled={
+                            status === "error"
+                        }
+                        compact
+                        onFile={
+                            selectFile
+                        }
+                    />
+                </div>
             )}
         </PageShell>
     );
