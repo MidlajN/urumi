@@ -1,11 +1,11 @@
-export type OperationId =
-    | "cut"
-    | "score"
-    | "draw"
-    | "guide";
+// export type OperationId =
+//     | "cut"
+//     | "score"
+//     | "draw"
+//     | "guide";
 
 export interface ManufacturingMetadata {
-    operationId: OperationId;
+    operationId: string;
 
     enabled: boolean;
 }

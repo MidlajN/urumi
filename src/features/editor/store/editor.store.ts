@@ -1,3 +1,4 @@
+import { listOperations } from "@/core/manufacturing/operations/registry";
 import { create } from "zustand";
 
 export type ToolType =
@@ -31,28 +32,7 @@ export type EditorInteractionMode =
     | "polyline-drawing"
     | "dimension-editing";
 
-export const OPERATION_COLORS = [
-    {
-        id: "cut",
-        label: "Cut",
-        color: "#111827"
-    },
-    {
-        id: "crease",
-        label: "Crease",
-        color: "#38bdf8"
-    },
-    {
-        id: "draw",
-        label: "Draw",
-        color: "#f97316"
-    },
-    {
-        id: "guide",
-        label: "Guide",
-        color: "#94a3b8"
-    }
-] as const;
+export const OPERATION_COLORS = listOperations();
 
 export type OperationColor =
     typeof OPERATION_COLORS[number];
