@@ -17,6 +17,9 @@ import {
     useNodeEditLifecycle
 } from "../hooks/useNodeEditLifecycle";
 import {
+    useCanvasInteractionPolicy
+} from "../hooks/useCanvasInteractionPolicy";
+import {
     useEditorStore
 } from "../store/editor.store";
 import SelectionDimensionsOverlay from "./SelectionDimensionsOverlay";
@@ -38,6 +41,9 @@ export default function EditorCanvas() {
     const { mode } = useWorkspaceStore();
 
     const showEditorUi = mode === 'design'
+
+    const isManufacturing =
+        mode === "manufacturing";
 
     const [
         preserveAspectRatio,
@@ -74,6 +80,11 @@ export default function EditorCanvas() {
         toolRef
     });
 
+    useCanvasInteractionPolicy(
+        canvas,
+        mode
+    );
+
     useEditorFabricEvents(
         canvas
     );
@@ -102,14 +113,27 @@ export default function EditorCanvas() {
             <SelectionDimensionsOverlay
                 geometry={geometry}
                 measurementsEnabled={
-                    dimensionsOverlayEnabled
+                    dimensionsOverlayEnabled ||
+                    isManufacturing
                 }
-                selectionMode={selectionMode}
+                selectionMode={
+                    isManufacturing
+                        ? "select"
+                        : selectionMode
+                }
                 preserveAspectRatio={
+                    !isManufacturing &&
                     preserveAspectRatio &&
                     geometry?.mode === "bbox"
                 }
-                onCommit={updateGeometry}
+                readOnly={
+                    isManufacturing
+                }
+                onCommit={
+                    isManufacturing
+                        ? () => {}
+                        : updateGeometry
+                }
             />
             <ReferenceControls
                 manager={

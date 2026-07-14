@@ -5,6 +5,7 @@ import {
 } from "@/core/manufacturing/job/defaults";
 
 import type {
+    JobOperationSelection,
     ManufacturingJob,
 } from "@/core/manufacturing/job/types";
 
@@ -15,6 +16,8 @@ import {
 interface ManufacturingStore {
 
     job: ManufacturingJob;
+
+    selectedMaterialId: string | null;
 
     initializeJob: (
         job?: ManufacturingJob
@@ -35,6 +38,32 @@ interface ManufacturingStore {
         operationId: string,
         enabled: boolean
     ) => void;
+
+    updateOperationSelection: (
+        operationId: string,
+        selection: Partial<JobOperationSelection>
+    ) => void;
+}
+
+function mergeOperationSelection(
+    current: JobOperationSelection | undefined,
+    next: Partial<JobOperationSelection>
+) {
+    const toolId =
+        next.toolId ??
+        current?.toolId;
+
+    if (!toolId) {
+        return null;
+    }
+
+    return {
+        toolId,
+        enabled:
+            next.enabled ??
+            current?.enabled ??
+            true,
+    };
 }
 
 export const useManufacturingStore =
@@ -45,6 +74,9 @@ create<ManufacturingStore>(
             ...EMPTY_JOB,
         },
 
+        selectedMaterialId:
+            EMPTY_JOB.materialId,
+
         initializeJob: (
             job = EMPTY_JOB
         ) =>
@@ -52,6 +84,8 @@ create<ManufacturingStore>(
                 job: {
                     ...job,
                 },
+                selectedMaterialId:
+                    job.materialId,
             }),
 
         resetJob: () =>
@@ -59,6 +93,8 @@ create<ManufacturingStore>(
                 job: {
                     ...EMPTY_JOB,
                 },
+                selectedMaterialId:
+                    EMPTY_JOB.materialId,
             }),
 
         setMaterial: (
@@ -127,6 +163,9 @@ create<ManufacturingStore>(
 
                     },
 
+                    selectedMaterialId:
+                        materialId,
+
                 })
             );
 
@@ -137,7 +176,22 @@ create<ManufacturingStore>(
             toolId
         ) =>
             set(
-                state => ({
+                state => {
+                    const selection =
+                        mergeOperationSelection(
+                            state.job.operationSelections[
+                                operationId
+                            ],
+                            {
+                                toolId,
+                            }
+                        );
+
+                    if (!selection) {
+                        return state;
+                    }
+
+                    return {
 
                     job: {
 
@@ -155,7 +209,7 @@ create<ManufacturingStore>(
                                         operationId
                                     ],
 
-                                toolId,
+                                ...selection,
 
                             },
 
@@ -163,7 +217,8 @@ create<ManufacturingStore>(
 
                     },
 
-                })
+                    };
+                }
             ),
 
         setOperationEnabled: (
@@ -171,7 +226,22 @@ create<ManufacturingStore>(
             enabled
         ) =>
             set(
-                state => ({
+                state => {
+                    const selection =
+                        mergeOperationSelection(
+                            state.job.operationSelections[
+                                operationId
+                            ],
+                            {
+                                enabled,
+                            }
+                        );
+
+                    if (!selection) {
+                        return state;
+                    }
+
+                    return {
 
                     job: {
 
@@ -189,7 +259,7 @@ create<ManufacturingStore>(
                                         operationId
                                     ],
 
-                                enabled,
+                                ...selection,
 
                             },
 
@@ -197,7 +267,56 @@ create<ManufacturingStore>(
 
                     },
 
-                })
+                    };
+                }
+            ),
+
+        updateOperationSelection: (
+            operationId,
+            selection
+        ) =>
+            set(
+                state => {
+                    const nextSelection =
+                        mergeOperationSelection(
+                            state.job.operationSelections[
+                                operationId
+                            ],
+                            selection
+                        );
+
+                    if (!nextSelection) {
+                        return state;
+                    }
+
+                    return {
+
+                    job: {
+
+                        ...state.job,
+
+                        operationSelections: {
+
+                            ...state.job.operationSelections,
+
+                            [operationId]: {
+
+                                ...state
+                                    .job
+                                    .operationSelections[
+                                        operationId
+                                    ],
+
+                                ...nextSelection,
+
+                            },
+
+                        },
+
+                    },
+
+                    };
+                }
             ),
 
     })

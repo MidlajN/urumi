@@ -210,6 +210,20 @@ export default function BottomNav() {
         layersOpen
     ]);
 
+    useEffect(() => {
+        if (
+            showEditorOptions
+        ) {
+            return;
+        }
+
+        setLayersOpen(
+            false
+        );
+    }, [
+        showEditorOptions
+    ]);
+
     const getLayerLabel = (
         object: FabricObject,
         index: number
@@ -321,7 +335,8 @@ export default function BottomNav() {
                 transition={{ duration: 0.5 }}
             >
                 <AnimatePresence>
-                    {layersOpen && (
+                    {showEditorOptions &&
+                        layersOpen && (
                         <motion.div
                             key="layers-panel"
                             initial={{

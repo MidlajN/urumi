@@ -17,6 +17,9 @@ import {
 import {
     isObjectInteractionLocked
 } from "../utils/objectLocking";
+import {
+    canModifyCanvas
+} from "../canvas/interactionPolicy";
 
 type FabricTargetEvent = {
     target?: FabricObject | null;
@@ -145,6 +148,14 @@ export function useEditorFabricEvents(
                 canvas.getActiveObject();
 
             if (
+                !canModifyCanvas(
+                    canvas
+                )
+            ) {
+                return activeObject;
+            }
+
+            if (
                 !(activeObject instanceof ActiveSelection)
             ) {
                 return activeObject;
@@ -228,6 +239,9 @@ export function useEditorFabricEvents(
             if (
                 editorState.activeTool !== "select" ||
                 editorState.selectionMode !== "select" ||
+                !canModifyCanvas(
+                    canvas
+                ) ||
                 !canEnterNodeEditFromMode(
                     editorState.interactionMode,
                     editorState.lastObjectTransformEndedAt

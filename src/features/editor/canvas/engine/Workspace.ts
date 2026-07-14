@@ -48,6 +48,9 @@ import {
     setPathGeometry
 } from "../../geometry/pathModel";
 import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
+import {
+    canModifyCanvas
+} from "../interactionPolicy";
 
 
 // ---------------------------------------
@@ -376,6 +379,14 @@ export class Workspace {
         color: string, 
         point?: Point
     ) {
+        if (
+            !canModifyCanvas(
+                this.canvas
+            )
+        ) {
+            return;
+        }
+
         if (file && file.type !== 'image/svg+xml') return;
 
         const reader = new FileReader();
@@ -561,6 +572,14 @@ export class Workspace {
 
                 if (!files?.length) return;
 
+                if (
+                    !canModifyCanvas(
+                        this.canvas
+                    )
+                ) {
+                    return;
+                }
+
                 const file = files[0];
 
                 if (file.type !== "image/svg+xml") {
@@ -597,6 +616,22 @@ export class Workspace {
                 activeEl.tagName.toLowerCase()
             )
         ) return;
+
+        if (
+            !canModifyCanvas(
+                this.canvas
+            )
+        ) {
+            if (
+                isCtrl &&
+                key === "a"
+            ) {
+                e.preventDefault();
+                this.editor.selectAll();
+            }
+
+            return;
+        }
 
         switch (true) {
             case isCtrl && key === 'c':

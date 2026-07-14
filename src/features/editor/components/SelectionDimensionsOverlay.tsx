@@ -20,6 +20,7 @@ type Props = {
     measurementsEnabled: boolean;
     selectionMode: EditorSelectionMode;
     preserveAspectRatio: boolean;
+    readOnly?: boolean;
     onCommit: (
         patch: SelectionGeometryPatch
     ) => void;
@@ -30,6 +31,7 @@ export default function SelectionDimensionsOverlay({
     measurementsEnabled,
     selectionMode,
     preserveAspectRatio,
+    readOnly = false,
     onCommit,
 }: Props) {
     const overlayRef =
@@ -91,6 +93,7 @@ export default function SelectionDimensionsOverlay({
         >
             {selectionMode ===
                 "node-edit" &&
+                !readOnly &&
                 geometry.mode ===
                 "line" && (
                 <LineOverlay
@@ -111,6 +114,7 @@ export default function SelectionDimensionsOverlay({
 
             {selectionMode ===
                 "node-edit" &&
+                !readOnly &&
                 geometry.mode ===
                 "nodes" && (
                 <NodesOverlay
@@ -143,6 +147,9 @@ export default function SelectionDimensionsOverlay({
                     }
                     preserveAspectRatio={
                         preserveAspectRatio
+                    }
+                    readOnly={
+                        readOnly
                     }
                     onCommit={
                         onCommit

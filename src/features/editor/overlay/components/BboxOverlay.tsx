@@ -21,11 +21,13 @@ export default function BboxOverlay({
     geometry,
     overlayWidth,
     preserveAspectRatio,
+    readOnly = false,
     onCommit,
 }: {
     geometry: SelectionGeometry;
     overlayWidth: number;
     preserveAspectRatio: boolean;
+    readOnly?: boolean;
     onCommit: OverlayCommit;
 }) {
     const {
@@ -143,62 +145,64 @@ export default function BboxOverlay({
                 }}
             />
 
-            <button
-                type="button"
-                aria-label={
-                    locked
-                        ? "Unlock object"
-                        : "Lock object"
-                }
-                title={
-                    locked
-                        ? "Unlock object"
-                        : "Lock object"
-                }
-                className={`
-                    pointer-events-auto
-                    absolute
-                    flex
-                    h-7
-                    w-7
-                    items-center
-                    justify-center
-                    rounded-md
-                    border
-                    shadow-sm
-                    transition-colors
-                    ${locked
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"}
-                `}
-                style={{
-                    left:
-                        viewport.left +
-                        viewport.width +
-                        8,
-                    top:
-                        viewport.top -
-                        34
-                }}
-                onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }}
-                onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onCommit({
-                        locked:
-                            !locked
-                    });
-                }}
-            >
-                {locked ? (
-                    <Lock size={14} />
-                ) : (
-                    <Unlock size={14} />
-                )}
-            </button>
+            {!readOnly && (
+                <button
+                    type="button"
+                    aria-label={
+                        locked
+                            ? "Unlock object"
+                            : "Lock object"
+                    }
+                    title={
+                        locked
+                            ? "Unlock object"
+                            : "Lock object"
+                    }
+                    className={`
+                        pointer-events-auto
+                        absolute
+                        flex
+                        h-7
+                        w-7
+                        items-center
+                        justify-center
+                        rounded-md
+                        border
+                        shadow-sm
+                        transition-colors
+                        ${locked
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"}
+                    `}
+                    style={{
+                        left:
+                            viewport.left +
+                            viewport.width +
+                            8,
+                        top:
+                            viewport.top -
+                            34
+                    }}
+                    onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onCommit({
+                            locked:
+                                !locked
+                        });
+                    }}
+                >
+                    {locked ? (
+                        <Lock size={14} />
+                    ) : (
+                        <Unlock size={14} />
+                    )}
+                </button>
+            )}
 
             <MeasurementGuide
                 ariaLabel="Object width"
@@ -219,7 +223,8 @@ export default function BboxOverlay({
                     commitWidth
                 }
                 editable={
-                    !locked
+                    !locked &&
+                    !readOnly
                 }
             />
 
@@ -250,7 +255,8 @@ export default function BboxOverlay({
                     commitHeight
                 }
                 editable={
-                    !locked
+                    !locked &&
+                    !readOnly
                 }
             />
         </>
