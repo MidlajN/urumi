@@ -14,6 +14,7 @@ import type { FabricObject } from "fabric";
 import { useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import { useWorkspaceStore } from "@/stores/workspace.store";
+import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
 
 
 const fontOptions = [
@@ -269,7 +270,8 @@ function OperationSwatches() {
 
     const applyOperation =
         (
-            color: string
+            color: string,
+            operationId: string
         ) => {
             setStrokeColor(
                 color
@@ -297,11 +299,23 @@ function OperationSwatches() {
             targets.forEach(
                 (
                     object
-                ) =>
+                ) => {
                     applyOperationColor(
                         object,
                         color
-                    )
+                    );
+
+                    const metadata =
+                        ensureManufacturingMetadata(
+                            object
+                        );
+
+                    metadata.operationId =
+                        operationId;
+
+                    metadata.enabled =
+                        true;
+                }
             );
 
             if (
@@ -348,7 +362,8 @@ function OperationSwatches() {
                             type="button"
                             onClick={() =>
                                 applyOperation(
-                                    item.color
+                                    item.color,
+                                    item.id
                                 )
                             }
                             className={`

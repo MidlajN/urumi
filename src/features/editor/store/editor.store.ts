@@ -58,6 +58,21 @@ export function resolveOperationColor(
     );
 }
 
+export function resolveOperationId(
+    color: string
+) {
+    return (
+        OPERATION_COLORS.find(
+            (
+                operation
+            ) =>
+                operation.color.toLowerCase() ===
+                color.toLowerCase()
+        )?.id ??
+        OPERATION_COLORS[0].id
+    );
+}
+
 type EditorStore = {
     activeTool: ToolType;
     selectedShape: ShapeType;

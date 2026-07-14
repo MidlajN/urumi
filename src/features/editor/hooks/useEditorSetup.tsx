@@ -18,6 +18,7 @@ import ReactDOMServer from "react-dom/server";
 
 import {
     resolveOperationColor,
+    resolveOperationId,
     useEditorStore
 } from "../store/editor.store";
 
@@ -88,6 +89,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
     const { workspace } = useCanvas();
 
     const operationStrokeColor = resolveOperationColor(strokeColor);
+    const operationId = resolveOperationId(operationStrokeColor);
 
     const fontRef = useRef(fontFamily);
 
@@ -129,9 +131,16 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         const isEditableText = (obj: FabricObject): obj is IText => obj.type === "i-text";
 
         const finalizeCreatedObject = (object: FabricObject) => {
-            ensureManufacturingMetadata(
-                object
-            )
+            const metadata =
+                ensureManufacturingMetadata(
+                    object
+                );
+
+            metadata.operationId =
+                operationId;
+
+            metadata.enabled =
+                true;
 
             object.set({
                 selectable: true,
@@ -266,11 +275,47 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                     createFabricPathFromGeometry(
                         geometry,
                         {
+                            left:
+                                originalPath.left,
+                            top:
+                                originalPath.top,
+                            originX:
+                                originalPath.originX,
+                            originY:
+                                originalPath.originY,
+                            angle:
+                                originalPath.angle,
+                            scaleX:
+                                originalPath.scaleX,
+                            scaleY:
+                                originalPath.scaleY,
+                            skewX:
+                                originalPath.skewX,
+                            skewY:
+                                originalPath.skewY,
+                            flipX:
+                                originalPath.flipX,
+                            flipY:
+                                originalPath.flipY,
                             stroke: operationStrokeColor,
                             strokeWidth: originalPath.strokeWidth,
                             fill: originalPath.fill
                         }
                     );
+
+                geometryPath.isFreeDraw =
+                    true;
+
+                const metadata =
+                    ensureManufacturingMetadata(
+                        geometryPath
+                    );
+
+                metadata.operationId =
+                    operationId;
+
+                metadata.enabled =
+                    true;
 
                 workspace?.beginHistoryTransaction();
 
@@ -283,6 +328,10 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                 );
 
                 workspace?.endHistoryTransaction();
+
+                canvas.isDrawingMode =
+                    true;
+                canvas.requestRenderAll();
             };
 
             canvas.on("path:created", onPathCreated);
@@ -1332,6 +1381,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
         selectedShape,
         selectedPen,
         operationStrokeColor,
+        operationId,
         fontFamily,
         fontSize,
         setTool,
