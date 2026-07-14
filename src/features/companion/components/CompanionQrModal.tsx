@@ -1,6 +1,5 @@
 import {
     CheckCircle2,
-    SlidersHorizontal,
     X
 } from "lucide-react";
 import {
@@ -21,7 +20,6 @@ import type {
 import type {
     CompanionState
 } from "../types";
-import ReferenceAdjustmentModal from "./ReferenceAdjustmentModal";
 
 const initialState: CompanionState = {
     status:
@@ -56,13 +54,6 @@ export default function CompanionQrModal({
         setState
     ] = useState(
         initialState
-    );
-
-    const [
-        adjustmentOpen,
-        setAdjustmentOpen
-    ] = useState(
-        false
     );
 
     useEffect(() => {
@@ -145,9 +136,7 @@ export default function CompanionQrModal({
             <div
                 className={`
                     w-full
-                    ${received
-                        ? "max-w-sm"
-                        : "max-w-sm"}
+                    max-w-sm
                     max-h-[calc(100vh-32px)]
                     overflow-hidden
                     rounded-xl
@@ -166,59 +155,31 @@ export default function CompanionQrModal({
                         </h2>
                         <p className="mt-1 text-[12px] font-medium text-zinc-500">
                             {received
-                                ? "Correct perspective before continuing"
+                                ? "Reference layer is ready"
                                 : "Scan from the companion app"}
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                        {received && (
-                            <button
-                                type="button"
-                                aria-label="Adjust reference perspective"
-                                title="Adjust reference perspective"
-                                onClick={() =>
-                                    setAdjustmentOpen(
-                                        true
-                                    )
-                                }
-                                className="
-                                    flex
-                                    h-8
-                                    w-8
-                                    items-center
-                                    justify-center
-                                    rounded-md
-                                    text-zinc-500
-                                    hover:bg-zinc-100
-                                    hover:text-zinc-900
-                                "
-                            >
-                                <SlidersHorizontal size={16} />
-                            </button>
-                        )}
-
-                        <button
-                            type="button"
-                            aria-label="Close companion modal"
-                            onClick={
-                                onClose
-                            }
-                            className="
-                                flex
-                                h-8
-                                w-8
-                                items-center
-                                justify-center
-                                rounded-md
-                                text-zinc-500
-                                hover:bg-zinc-100
-                                hover:text-zinc-900
-                            "
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        aria-label="Close companion modal"
+                        onClick={
+                            onClose
+                        }
+                        className="
+                            flex
+                            h-8
+                            w-8
+                            items-center
+                            justify-center
+                            rounded-md
+                            text-zinc-500
+                            hover:bg-zinc-100
+                            hover:text-zinc-900
+                        "
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
 
                 {received ? (
@@ -330,19 +291,6 @@ export default function CompanionQrModal({
                 )}
             </div>
         </div>
-            <ReferenceAdjustmentModal
-                manager={
-                    manager
-                }
-                open={
-                    adjustmentOpen
-                }
-                onClose={() =>
-                    setAdjustmentOpen(
-                        false
-                    )
-                }
-            />
         </>
     );
 }
