@@ -38,12 +38,17 @@ import {
     isObjectInteractionLocked,
     setObjectInteractionLocked
 } from "../utils/objectLocking";
+import { useWorkspaceStore } from "@/stores/workspace.store";
 
 export default function BottomNav() {
     const {
         canvas,
         workspace
     } = useCanvas();
+
+    const { mode } = useWorkspaceStore();
+
+    const showEditorOptions = mode === "design"
 
     const layersNavRef =
         useRef<HTMLDivElement>(
@@ -490,66 +495,68 @@ export default function BottomNav() {
                     )}
                 </AnimatePresence>
 
-                <div className="flex gap-3">
-                    <div className="flex rounded-lg p-1 bg-white gap-0.5 shadow-xl">
-                        <motion.button
-                            className="px-4 py-2 bg-zinc-100 transition-all duration-300 border border-transparent hover:border-[#1c809681]"
-                            whileTap={{ scale: 0.95, background: "#f3f4f6" }}
-                            onClick={() => {
-                                if (!workspace) return;
+                { showEditorOptions && 
+                    <div className="flex gap-3">
+                        <div className="flex rounded-lg p-1 bg-white gap-0.5 shadow-xl">
+                            <motion.button
+                                className="px-4 py-2 bg-zinc-100 transition-all duration-300 border border-transparent hover:border-[#1c809681]"
+                                whileTap={{ scale: 0.95, background: "#f3f4f6" }}
+                                onClick={() => {
+                                    if (!workspace) return;
 
-                                workspace.undo();
-                                syncAfterHistoryChange();
-                            }}
-                        >
-                            <Undo width={16} height={16} />
-                        </motion.button>
-                        <motion.button
-                            className="px-4 py-2 bg-zinc-100 transition-all duration-300 rounded-e-md border border-transparent hover:border-[#1c809681]"
-                            whileTap={{ scale: 0.95, background: "#f3f4f6" }}
-                            onClick={() => {
-                                if (!workspace) return;
+                                    workspace.undo();
+                                    syncAfterHistoryChange();
+                                }}
+                            >
+                                <Undo width={16} height={16} />
+                            </motion.button>
+                            <motion.button
+                                className="px-4 py-2 bg-zinc-100 transition-all duration-300 rounded-e-md border border-transparent hover:border-[#1c809681]"
+                                whileTap={{ scale: 0.95, background: "#f3f4f6" }}
+                                onClick={() => {
+                                    if (!workspace) return;
 
-                                workspace.redo();
-                                syncAfterHistoryChange();
+                                    workspace.redo();
+                                    syncAfterHistoryChange();
+                                }}
+                            >
+                                <Redo width={16} height={16} />
+                            </motion.button>
+                        </div>
+
+                        <motion.button
+                            aria-label={layersOpen ? "Hide object stack" : "Show object stack"}
+                            title={layersOpen ? "Hide object stack" : "Show object stack"}
+                            className="px-4 py-2 bg-white shadow-xl transition-all duration-300 border border-transparent rounded-lg hover:border-[#1c809681]"
+                            style={{
+                                background:
+                                    layersOpen
+                                        ? "#0891b2"
+                                        : "#ffffff"
                             }}
+                            whileTap={{ scale: 0.95, background: "#f3f4f6" }}
+                            onClick={() =>
+                                setLayersOpen(
+                                    (
+                                        open
+                                    ) =>
+                                        !open
+                                )
+                            }
                         >
-                            <Redo width={16} height={16} />
+                            <Layers
+                                width={16}
+                                height={16}
+                                style={{
+                                    stroke:
+                                        layersOpen
+                                            ? "#ffffff"
+                                            : "#18181b"
+                                }}
+                            />
                         </motion.button>
                     </div>
-
-                    <motion.button
-                        aria-label={layersOpen ? "Hide object stack" : "Show object stack"}
-                        title={layersOpen ? "Hide object stack" : "Show object stack"}
-                        className="px-4 py-2 bg-white shadow-xl transition-all duration-300 border border-transparent rounded-lg hover:border-[#1c809681]"
-                        style={{
-                            background:
-                                layersOpen
-                                    ? "#0891b2"
-                                    : "#ffffff"
-                        }}
-                        whileTap={{ scale: 0.95, background: "#f3f4f6" }}
-                        onClick={() =>
-                            setLayersOpen(
-                                (
-                                    open
-                                ) =>
-                                    !open
-                            )
-                        }
-                    >
-                        <Layers
-                            width={16}
-                            height={16}
-                            style={{
-                                stroke:
-                                    layersOpen
-                                        ? "#ffffff"
-                                        : "#18181b"
-                            }}
-                        />
-                    </motion.button>
-                </div>
+                }
             </motion.div>
 
             <motion.div
@@ -585,33 +592,35 @@ export default function BottomNav() {
                             }}
                         />
                     </motion.button>
-                    <motion.button
-                        aria-label={
-                            dimensionsOverlayEnabled
-                                ? "Hide dimensions overlay"
-                                : "Show dimensions overlay"
-                        }
-                        title={
-                            dimensionsOverlayEnabled
-                                ? "Hide dimensions overlay"
-                                : "Show dimensions overlay"
-                        }
-                        className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
-                        whileTap={{ scale: 0.98, background: "#f3f4f6" }}
-                        style={{ background: dimensionsOverlayEnabled ? "#0891b2" : "#ffffff" }}
-                        onClick={toggleDimensionsOverlay}
-                    >
-                        <Ruler
-                            width={16}
-                            height={16}
-                            style={{
-                                stroke:
-                                    dimensionsOverlayEnabled
-                                        ? "#ffffff"
-                                        : "#0891b2"
-                            }}
-                        />
-                    </motion.button>
+                    { showEditorOptions && 
+                        <motion.button
+                            aria-label={
+                                dimensionsOverlayEnabled
+                                    ? "Hide dimensions overlay"
+                                    : "Show dimensions overlay"
+                            }
+                            title={
+                                dimensionsOverlayEnabled
+                                    ? "Hide dimensions overlay"
+                                    : "Show dimensions overlay"
+                            }
+                            className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
+                            whileTap={{ scale: 0.98, background: "#f3f4f6" }}
+                            style={{ background: dimensionsOverlayEnabled ? "#0891b2" : "#ffffff" }}
+                            onClick={toggleDimensionsOverlay}
+                        >
+                            <Ruler
+                                width={16}
+                                height={16}
+                                style={{
+                                    stroke:
+                                        dimensionsOverlayEnabled
+                                            ? "#ffffff"
+                                            : "#0891b2"
+                                }}
+                            />
+                        </motion.button>
+                    }
                     <motion.button
                         className="px-5 py-3 bg-white transition-all duration-300 border border-transparent hover:border-[#1c809681]"
                         whileTap={{ scale: 0.95, background: "#f3f4f6" }}

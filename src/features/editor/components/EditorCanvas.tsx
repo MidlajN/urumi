@@ -24,6 +24,7 @@ import BottomNav from "./BottomNav";
 import TopTransformToolbar from "./layout/TopTransformToolbar";
 import ReferenceControls from "../../companion/components/ReferenceControls";
 import CompanionQrModal from "../../companion/components/CompanionQrModal";
+import { useWorkspaceStore } from "@/stores/workspace.store";
 
 export default function EditorCanvas() {
     const {
@@ -33,6 +34,10 @@ export default function EditorCanvas() {
         toolRef,
         companion
     } = useCanvas();
+
+    const { mode } = useWorkspaceStore();
+
+    const showEditorUi = mode === 'design'
 
     const [
         preserveAspectRatio,
@@ -94,20 +99,6 @@ export default function EditorCanvas() {
             className="relative w-full h-full"
         >
             <canvas ref={canvasRef} />
-            <TopTransformToolbar
-                geometry={
-                    geometry
-                }
-                preserveAspectRatio={
-                    preserveAspectRatio
-                }
-                onPreserveAspectRatioChange={
-                    setPreserveAspectRatio
-                }
-                onCommit={
-                    updateGeometry
-                }
-            />
             <SelectionDimensionsOverlay
                 geometry={geometry}
                 measurementsEnabled={
@@ -145,7 +136,26 @@ export default function EditorCanvas() {
                     );
                 }}
             />
+
+            { showEditorUi && 
+                <TopTransformToolbar
+                    geometry={
+                        geometry
+                    }
+                    preserveAspectRatio={
+                        preserveAspectRatio
+                    }
+                    onPreserveAspectRatioChange={
+                        setPreserveAspectRatio
+                    }
+                    onCommit={
+                        updateGeometry
+                    }
+                />
+            }
+            
             <BottomNav />
+            
         </div>
     );
 }
