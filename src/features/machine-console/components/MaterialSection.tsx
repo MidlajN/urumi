@@ -1,5 +1,6 @@
 import {
-    Settings
+    Layers3,
+    Settings2
 } from "lucide-react";
 
 import {
@@ -8,12 +9,27 @@ import {
 import {
     useManufacturingStore
 } from "@/stores/manufacturing.store";
+import AnimatedSelect from "./AnimatedSelect";
 
 const materials =
     listMaterials().filter(
         (
             material
         ) => material.enabled
+    );
+
+const materialOptions =
+    materials.map(
+        (
+            material
+        ) => ({
+            value:
+                material.id,
+            label:
+                material.name,
+            description:
+                `${material.thickness} mm material`
+        })
     );
 
 export default function MaterialSection({
@@ -38,14 +54,19 @@ export default function MaterialSection({
         );
 
     return (
-        <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm">
-            <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                        Material Preset
-                    </div>
-                    <div className="mt-0.5 text-[12px] font-medium text-zinc-500">
-                        Tools are configured once per material.
+        <section className="rounded-md bg-zinc-950 p-3 text-white shadow-[0_8px_24px_rgba(24,24,27,0.16)]">
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10 text-cyan-300">
+                        <Layers3 size={15} />
+                    </span>
+                    <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase text-zinc-500">
+                            Job preset
+                        </div>
+                        <div className="mt-0.5 truncate text-[13px] font-semibold text-white">
+                            Material setup
+                        </div>
                     </div>
                 </div>
 
@@ -57,71 +78,58 @@ export default function MaterialSection({
                         onOpenSettings
                     }
                     className="
+                        flex
+                        h-8
+                        w-8
+                        items-center
+                        justify-center
                         rounded-md
                         border
-                        border-zinc-200
-                        bg-zinc-950
-                        p-2
-                        text-white
-                        shadow-sm
+                        border-white/10
+                        bg-white/10
+                        text-zinc-300
                         transition
-                        hover:bg-zinc-800
+                        hover:bg-white/15
+                        hover:text-white
                     "
                 >
-                    <Settings size={16} />
+                    <Settings2 size={15} />
                 </button>
             </div>
 
-            <select
+            <AnimatedSelect
+                ariaLabel="Material preset"
                 value={
                     selectedMaterialId ??
                     ""
                 }
-                onChange={(event) =>
-                    setMaterial(
-                        event.target.value
-                    )
+                options={
+                    materialOptions
                 }
-                className="
-                    h-10
-                    w-full
-                    rounded-md
-                    border
-                    border-zinc-200
-                    bg-zinc-50
-                    px-3
-                    text-[14px]
-                    font-medium
-                    text-zinc-900
-                    outline-none
-                    transition
-                    focus:border-zinc-400
-                    focus:bg-white
-                "
-            >
-                <option value="" disabled>
-                    Select material
-                </option>
-                {materials.map(
-                    (
-                        material
-                    ) => (
-                        <option
-                            key={
-                                material.id
-                            }
-                            value={
-                                material.id
-                            }
-                        >
-                            {material.name}
-                            {" "}
-                            {material.thickness}
-                            mm
-                        </option>
-                    )
-                )}
-            </select>
+                placeholder="Select material"
+                onChange={
+                    setMaterial
+                }
+                variant="dark"
+            />
+
+            <div className="mt-2.5 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase text-zinc-500">
+                <span className="flex items-center gap-1.5">
+                    <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                            selectedMaterialId
+                                ? "bg-emerald-400"
+                                : "bg-amber-400"
+                        }`}
+                    />
+                    {selectedMaterialId
+                        ? "Ready"
+                        : "Required"}
+                </span>
+                <span>
+                    Configure tools
+                </span>
+            </div>
         </section>
     );
 }

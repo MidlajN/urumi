@@ -2,24 +2,23 @@ import {
     useEffect,
     useRef
 } from "react";
-
 import type {
-    ManufacturingOperationSummary
-} from "@/core/manufacturing/analysis/types";
+    FabricObject
+} from "fabric";
 
 const PREVIEW_SIZE =
-    68;
+    40;
 
 const PREVIEW_PADDING =
-    9;
+    6;
 
 const PREVIEW_STROKE_OFFSET =
-    0.7;
+    0.85;
 
-export default function OperationPreview({
-    summary
+export default function ObjectPreview({
+    object
 }: {
-    summary: ManufacturingOperationSummary;
+    object: FabricObject;
 }) {
     const canvasRef =
         useRef<HTMLCanvasElement | null>(
@@ -36,16 +35,16 @@ export default function OperationPreview({
             return;
         }
 
-        const scaleFactor =
+        const pixelRatio =
             window.devicePixelRatio ||
             1;
 
         element.width =
             PREVIEW_SIZE *
-            scaleFactor;
+            pixelRatio;
         element.height =
             PREVIEW_SIZE *
-            scaleFactor;
+            pixelRatio;
 
         const context =
             element.getContext(
@@ -59,10 +58,10 @@ export default function OperationPreview({
         }
 
         context.setTransform(
-            scaleFactor,
+            pixelRatio,
             0,
             0,
-            scaleFactor,
+            pixelRatio,
             0,
             0
         );
@@ -82,10 +81,9 @@ export default function OperationPreview({
         );
 
         const bounds =
-            summary.boundingBox;
+            object.getBoundingRect();
 
         if (
-            !bounds ||
             bounds.width <= 0 ||
             bounds.height <= 0
         ) {
@@ -114,6 +112,7 @@ export default function OperationPreview({
                     scale
             ) /
                 2;
+
         const offsetY =
             PREVIEW_PADDING +
             (
@@ -143,6 +142,10 @@ export default function OperationPreview({
             PREVIEW_STROKE_OFFSET /
             scale;
 
+        const diagonalOffset =
+            strokeOffset *
+            0.7;
+
         const renderOffsets = [
             [
                 -strokeOffset,
@@ -161,46 +164,56 @@ export default function OperationPreview({
                 strokeOffset
             ],
             [
+                -diagonalOffset,
+                -diagonalOffset
+            ],
+            [
+                diagonalOffset,
+                -diagonalOffset
+            ],
+            [
+                -diagonalOffset,
+                diagonalOffset
+            ],
+            [
+                diagonalOffset,
+                diagonalOffset
+            ],
+            [
                 0,
                 0
             ]
         ] as const;
 
-        summary.objects.forEach(
+        renderOffsets.forEach(
             (
-                object
+                [
+                    x,
+                    y
+                ],
+                index
             ) => {
-                renderOffsets.forEach(
-                    (
-                        [
-                            x,
-                            y
-                        ],
-                        index
-                    ) => {
-                        context.save();
-                        context.translate(
-                            x,
-                            y
-                        );
-                        context.globalAlpha =
-                            index ===
-                            renderOffsets.length -
-                                1
-                                ? 1
-                                : 0.55;
-                        object.render(
-                            context
-                        );
-                        context.restore();
-                    }
+                context.save();
+                context.translate(
+                    x,
+                    y
                 );
+                context.globalAlpha =
+                    index ===
+                    renderOffsets.length -
+                        1
+                        ? 1
+                        : 0.7;
+                object.render(
+                    context
+                );
+                context.restore();
             }
         );
 
         context.restore();
     }, [
-        summary
+        object
     ]);
 
     return (
@@ -214,15 +227,8 @@ export default function OperationPreview({
             height={
                 PREVIEW_SIZE
             }
-            className="
-                h-[68px]
-                w-[68px]
-                shrink-0
-                rounded-md
-                border
-                border-zinc-200
-                bg-white
-            "
+            aria-hidden="true"
+            className="h-10 w-10 shrink-0 rounded-md border border-zinc-200 bg-white"
         />
     );
 }

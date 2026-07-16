@@ -1,6 +1,5 @@
 import {
-    MousePointer2,
-    MoveRight,
+    Boxes,
     X
 } from "lucide-react";
 import type {
@@ -13,12 +12,28 @@ import type {
 import {
     listOperations
 } from "@/core/manufacturing/operations/registry";
+import AnimatedSelect from "./AnimatedSelect";
+import ObjectPreview from "./ObjectPreview";
 
 const operations =
     listOperations().filter(
         (
             operation
         ) => operation.enabled
+    );
+
+const operationOptions =
+    operations.map(
+        (
+            operation
+        ) => ({
+            value:
+                operation.id,
+            label:
+                operation.label,
+            color:
+                operation.color
+        })
     );
 
 export default function OperationObjectsPanel({
@@ -38,25 +53,29 @@ export default function OperationObjectsPanel({
     ) => void;
 }) {
     return (
-        <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
-            <div className="relative border-b border-zinc-200 bg-zinc-950 px-3 py-3 text-white">
+        <section className="overflow-hidden rounded-md border border-zinc-200 bg-white">
+            <div className="relative border-b border-zinc-200 bg-white px-4 py-3.5">
                 <div
-                    className="absolute inset-y-0 left-0 w-1"
+                    className="absolute inset-y-0 left-0 w-0.5"
                     style={{
                         backgroundColor:
                             summary.operation.color
                     }}
                 />
 
-                <div className="flex items-start justify-between gap-3 pl-2">
-                    <div className="min-w-0">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                            Object List
+                <div className="flex items-start justify-between gap-3 pl-1">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600">
+                            <Boxes size={15} />
+                        </span>
+                        <div className="min-w-0">
+                        <div className="text-[9px] font-bold uppercase text-zinc-400">
+                            Operation objects
                         </div>
-                        <div className="mt-0.5 truncate text-[14px] font-semibold text-white">
+                        <div className="mt-0.5 truncate text-[14px] font-semibold text-zinc-950">
                             {summary.operation.label}
                         </div>
-                        <div className="mt-1 text-[11px] font-medium text-zinc-400">
+                        <div className="mt-1 text-[10px] font-medium text-zinc-500">
                             {summary.objectCount}
                             {" "}
                             {summary.objectCount ===
@@ -66,6 +85,7 @@ export default function OperationObjectsPanel({
                             {" "}
                             assigned
                         </div>
+                        </div>
                     </div>
 
                     <button
@@ -74,14 +94,14 @@ export default function OperationObjectsPanel({
                         onClick={
                             onClose
                         }
-                        className="rounded-md p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-950"
                     >
                         <X size={15} />
                     </button>
                 </div>
             </div>
 
-            <div className="max-h-72 overflow-y-auto bg-zinc-50 p-2">
+            <div className="max-h-80 overflow-y-auto bg-white">
                 {summary.objects.map(
                     (
                         object,
@@ -90,98 +110,85 @@ export default function OperationObjectsPanel({
                         <div
                             key={`${object.id ?? object.name ?? object.type}:${index}`}
                             className="
-                                mb-2
-                                rounded-md
-                                border
-                                border-zinc-200
+                                group
+                                relative
                                 bg-white
-                                p-2.5
-                                shadow-sm
-                                last:mb-0
+                                px-3
+                                py-2.5
+                                border-b
+                                border-zinc-100
+                                transition
+                                duration-150
+                                hover:bg-zinc-50
+                                focus-within:bg-zinc-50
+                                last:border-b-0
                             "
                         >
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    onSelectObject(
-                                        object
-                                    )
-                                }
-                                className="flex w-full min-w-0 items-center gap-2 text-left"
-                            >
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
-                                    <MousePointer2
-                                        size={14}
-                                    />
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <div className="truncate text-[13px] font-semibold text-zinc-800">
-                                        {getObjectLabel(
-                                            object,
-                                            index
-                                        )}
-                                    </div>
-                                    <div className="truncate text-[11px] font-medium text-zinc-400">
-                                        {object.type ??
-                                            "object"}
-                                    </div>
-                                </div>
-                            </button>
+                            <span
+                                className="absolute inset-y-2 left-0 w-0.5 rounded-r-full opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+                                style={{
+                                    backgroundColor:
+                                        summary.operation.color
+                                }}
+                            />
 
-                            <label className="mt-2.5 block border-t border-zinc-100 pt-2">
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                                    <MoveRight
-                                        size={11}
+                            <div className="flex min-w-0 items-center gap-2">
+                                <button
+                                    type="button"
+                                    aria-label={`Select ${getObjectLabel(
+                                        object,
+                                        index
+                                    )} on canvas`}
+                                    onClick={() =>
+                                        onSelectObject(
+                                            object
+                                        )
+                                    }
+                                    className="flex min-w-0 flex-1 items-center gap-2 rounded-[5px] text-left outline-none focus:ring-2 focus:ring-cyan-100"
+                                >
+                                    <ObjectPreview
+                                        object={
+                                            object
+                                        }
                                     />
-                                    Move Operation
-                                </span>
-                                <select
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[12px] font-semibold text-zinc-900">
+                                            {getObjectLabel(
+                                                object,
+                                                index
+                                            )}
+                                        </span>
+                                        <span className="mt-0.5 block truncate text-[9px] font-bold uppercase text-zinc-400">
+                                            {object.type ??
+                                                "object"}
+                                        </span>
+                                    </span>
+                                </button>
+
+                                <div className="w-[132px] shrink-0">
+                                <AnimatedSelect
+                                    ariaLabel={`Move ${getObjectLabel(
+                                        object,
+                                        index
+                                    )} to operation`}
                                     value={
                                         object.manufacturing?.operationId ??
                                         summary.operationId
                                     }
-                                    onChange={(event) =>
+                                    onChange={(operationId) =>
                                         onMoveObjectToOperation(
                                             object,
-                                            event.target.value
+                                            operationId
                                         )
                                     }
-                                    className="
-                                        mt-1
-                                        h-8
-                                        w-full
-                                        rounded-md
-                                        border
-                                        border-zinc-200
-                                        bg-zinc-50
-                                        px-2
-                                        text-[12px]
-                                        font-medium
-                                        text-zinc-800
-                                        outline-none
-                                        transition
-                                        focus:border-zinc-400
-                                        focus:bg-white
-                                    "
-                                >
-                                    {operations.map(
-                                        (
-                                            operation
-                                        ) => (
-                                            <option
-                                                key={
-                                                    operation.id
-                                                }
-                                                value={
-                                                    operation.id
-                                                }
-                                            >
-                                                {operation.label}
-                                            </option>
-                                        )
-                                    )}
-                                </select>
-                            </label>
+                                    options={
+                                        operationOptions
+                                    }
+                                    placeholder="Select operation"
+                                    compact
+                                />
+                                </div>
+                            </div>
                         </div>
                     )
                 )}

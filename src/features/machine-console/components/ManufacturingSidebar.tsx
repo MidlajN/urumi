@@ -11,6 +11,12 @@ import {
     AnimatePresence,
     motion
 } from "framer-motion";
+import {
+    ArrowLeft,
+    Boxes,
+    Factory,
+    Layers3
+} from "lucide-react";
 
 import MaterialSection from "./MaterialSection";
 import MaterialToolSettingsModal from "./MaterialToolSettingsModal";
@@ -19,6 +25,9 @@ import OperationObjectsPanel from "./OperationObjectsPanel";
 import {
     useManufacturingSummary
 } from "../hooks/useManufacturingSummary";
+import {
+    useWorkspaceStore
+} from "@/stores/workspace.store";
 
 const OBJECT_PANEL_WIDTH =
     320;
@@ -38,6 +47,13 @@ type FloatingPanelPosition = {
 };
 
 export default function ManufacturingSidebar() {
+    const setMode =
+        useWorkspaceStore(
+            (
+                state
+            ) => state.setMode
+        );
+
     const {
         summary,
         selectObject,
@@ -119,9 +135,19 @@ export default function ManufacturingSidebar() {
                 const panel =
                     panelRef.current;
 
+                const target =
+                    event.target as Node;
+
                 if (
                     panel?.contains(
-                        event.target as Node
+                        target
+                    ) ||
+                    (
+                        target instanceof
+                            Element &&
+                        target.closest(
+                            "[data-machine-select-menu]"
+                        )
                     )
                 ) {
                     return;
@@ -185,26 +211,71 @@ export default function ManufacturingSidebar() {
                 flex-col
                 border-l
                 border-zinc-200
-                bg-white
+                bg-[#f4f5f7]
             "
         >
-            <div className="border-b border-zinc-100 p-5">
-                <h2 className="text-lg font-semibold text-zinc-950">
-                    Manufacturing
-                </h2>
-                <div className="mt-1 text-[12px] font-medium text-zinc-500">
-                    {summary.totalObjectCount}
-                    {" "}
-                    manufacturing
-                    {" "}
-                    {summary.totalObjectCount ===
-                    1
-                        ? "object"
-                        : "objects"}
-                </div>
-            </div>
+            <header className="border-b border-zinc-200 bg-white">
+                <div className="flex h-[78px] items-center gap-3 px-4">
+                    <button
+                        type="button"
+                        aria-label="Back to design"
+                        title="Back to design"
+                        onClick={() =>
+                            setMode(
+                                "design"
+                            )
+                        }
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-950"
+                    >
+                        <ArrowLeft size={17} />
+                    </button>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="truncate text-[15px] font-semibold text-zinc-950">
+                                Manufacturing
+                            </h2>
+                            <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[9px] font-bold uppercase text-cyan-700">
+                                Setup
+                            </span>
+                        </div>
+                        <div className="mt-1 text-[11px] font-medium text-zinc-500">
+                            Read-only document preparation
+                        </div>
+                    </div>
+
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
+                        <Factory size={17} />
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-2 border-t border-zinc-100 bg-zinc-50/80">
+                    <div className="flex items-center gap-2.5 border-r border-zinc-200 px-4 py-3">
+                        <Boxes size={15} className="text-zinc-400" />
+                        <div>
+                            <div className="text-[14px] font-semibold text-zinc-900">
+                                {summary.totalObjectCount}
+                            </div>
+                            <div className="text-[9px] font-bold uppercase text-zinc-400">
+                                Objects
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 px-4 py-3">
+                        <Layers3 size={15} className="text-zinc-400" />
+                        <div>
+                            <div className="text-[14px] font-semibold text-zinc-900">
+                                {summary.operations.length}
+                            </div>
+                            <div className="text-[9px] font-bold uppercase text-zinc-400">
+                                Operations
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 <MaterialSection
                     onOpenSettings={() =>
                         setMaterialSettingsOpen(
@@ -213,15 +284,33 @@ export default function ManufacturingSidebar() {
                     }
                 />
 
-                <div className="mt-6">
-                    <div className="mb-2 text-[12px] font-semibold uppercase text-zinc-500">
-                        Operations
+                <div className="mt-5">
+                    <div className="mb-2.5 flex items-center justify-between">
+                        <div>
+                            <div className="text-[11px] font-bold uppercase text-zinc-500">
+                                Document operations
+                            </div>
+                            <div className="mt-0.5 text-[10px] font-medium text-zinc-400">
+                                Grouped by assigned operation
+                            </div>
+                        </div>
+                        <span className="rounded-full border border-zinc-200 bg-white px-2 py-1 text-[10px] font-bold text-zinc-500">
+                            {summary.operations.length}
+                        </span>
                     </div>
 
                     {summary.operations.length ===
                     0 ? (
-                        <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-6 text-center text-[13px] font-medium text-zinc-500">
-                            No manufacturing objects found.
+                        <div className="rounded-md border border-dashed border-zinc-300 bg-white px-5 py-8 text-center">
+                            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-zinc-100 text-zinc-400">
+                                <Layers3 size={18} />
+                            </span>
+                            <div className="mt-3 text-[13px] font-semibold text-zinc-700">
+                                No operations yet
+                            </div>
+                            <div className="mt-1 text-[11px] font-medium leading-4 text-zinc-500">
+                                Assign operation colors to design objects before manufacturing.
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-3">
