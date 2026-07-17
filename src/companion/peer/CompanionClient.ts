@@ -1,32 +1,14 @@
 import Peer, { type DataConnection } from "peerjs";
 
-const PROTOCOL_VERSION = 1;
+import type {
+    CompanionReferencePayload,
+    // Messages this client sends (inbound from the editor's perspective).
+    CompanionInboundMessage,
+    // Messages the editor sends back (its outbound).
+    CompanionOutboundMessage,
+} from "@/features/companion/types";
 
-type ReadyMessage = {
-  version: 1;
-  type: "ready";
-};
-
-type ReceivedMessage = {
-  version: 1;
-  type: "received";
-};
-
-type ReferenceImageMessage = {
-  version: 1;
-  type: "reference-image";
-  mime: "image/jpeg";
-  width: number;
-  height: number;
-  data: ArrayBuffer;
-};
-
-type DesktopMessage = ReadyMessage | ReceivedMessage;
-
-export type ReferenceImagePayload = Omit<
-  ReferenceImageMessage,
-  "version" | "type"
->;
+export type { CompanionReferencePayload };
 
 export class CompanionClient {
     private peer: Peer | null = null;
@@ -40,18 +22,12 @@ export class CompanionClient {
             throw new Error("Invalid editor session.");
         }
 
-        const peer = new Peer({
-            debug: 3
-        });
+        const peer = new Peer();
 
         this.peer = peer;
 
         await new Promise<void>((resolve, reject) => {
             peer.once("open", () => resolve());
-
-            peer.once("open", () => {
-                console.log("Mobile: peer created");
-            });
 
             peer.once("error", reject);
         });
@@ -60,41 +36,15 @@ export class CompanionClient {
             reliable: true,
         });
 
-        setInterval(() => {
-            console.log("Polling open:", connection.open);
-        }, 1000);
-
-        await new Promise<void>((resolve, reject) => {
-            connection.once("open", () => {
-                console.log("Connection opened");
-                resolve();
-            });
-
-            connection.once("error", reject);
-
-            connection.once("close", () => {
-                reject(new Error("Connection closed"));
-            });
-        });
-
-        this.connection = connection;
-
         await new Promise<void>((resolve, reject) => {
             const timeout = window.setTimeout(() => {
                 cleanup();
                 reject(new Error("Unable to connect to the editor."));
             }, 15000);
 
-            const handleData = (data: unknown) => {
-                const desktopMessage = data as DesktopMessage;
-
-                if (
-                    desktopMessage.version === PROTOCOL_VERSION &&
-                    desktopMessage.type === "ready"
-                ) {
-                    cleanup();
-                    resolve();
-                }
+            const handleOpen = () => {
+                cleanup();
+                resolve();
             };
 
             const handleError = (error: Error) => {
@@ -109,72 +59,72 @@ export class CompanionClient {
 
             const cleanup = () => {
                 window.clearTimeout(timeout);
-                connection.off("data", handleData);
+                connection.off("open", handleOpen);
                 connection.off("error", handleError);
                 connection.off("close", handleClose);
             };
 
-            connection.on("data", handleData);
+            connection.once("open", handleOpen);
 
             connection.once("error", handleError);
 
             connection.once("close", handleClose);
         });
+
+        this.connection = connection;
+
+        this.send({
+            type: "MOBILE_APP_READY",
+        });
     }
 
-    async sendReferenceImage(payload: ReferenceImagePayload) {
+    async sendReferenceImage(payload: CompanionReferencePayload) {
         const connection = this.connection;
 
         if (!connection || !connection.open) {
-        throw new Error("Editor connection is not open.");
+            throw new Error("Editor connection is not open.");
         }
 
-        const message: ReferenceImageMessage = {
-        version: PROTOCOL_VERSION,
-        type: "reference-image",
-        ...payload,
-        };
-
         await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-            cleanup();
-            reject(new Error("The editor did not acknowledge the transfer."));
-        }, 30000);
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                reject(new Error("The editor did not acknowledge the transfer."));
+            }, 30000);
 
-        const handleData = (data: unknown) => {
-            const desktopMessage = data as DesktopMessage;
+            const handleData = (data: unknown) => {
+                const editorMessage = data as CompanionOutboundMessage;
 
-            if (
-            desktopMessage.version === PROTOCOL_VERSION &&
-            desktopMessage.type === "received"
-            ) {
-            cleanup();
-            resolve();
-            }
-        };
+                if (editorMessage.type === "received") {
+                    cleanup();
+                    resolve();
+                }
+            };
 
-        const handleClose = () => {
-            cleanup();
-            reject(new Error("The editor disconnected during transfer."));
-        };
+            const handleClose = () => {
+                cleanup();
+                reject(new Error("The editor disconnected during transfer."));
+            };
 
-        const handleError = (error: Error) => {
-            cleanup();
-            reject(error);
-        };
+            const handleError = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
 
-        const cleanup = () => {
-            window.clearTimeout(timeout);
-            connection.off("data", handleData);
-            connection.off("close", handleClose);
-            connection.off("error", handleError);
-        };
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                connection.off("data", handleData);
+                connection.off("close", handleClose);
+                connection.off("error", handleError);
+            };
 
-        connection.on("data", handleData);
-        connection.once("close", handleClose);
-        connection.once("error", handleError);
+            connection.on("data", handleData);
+            connection.once("close", handleClose);
+            connection.once("error", handleError);
 
-        connection.send(message);
+            this.send({
+                type: "PROCESSING_COMPLETE",
+                payload,
+            });
         });
     }
 
@@ -184,5 +134,9 @@ export class CompanionClient {
 
         this.peer?.destroy();
         this.peer = null;
+    }
+
+    private send(message: CompanionInboundMessage) {
+        this.connection?.send(message);
     }
 }

@@ -76,7 +76,7 @@ export default function ReferenceCapturePage() {
                 new URLSearchParams(
                     window.location.search
                 ).get(
-                    "peer"
+                    "peerId"
                 ),
             []
         );

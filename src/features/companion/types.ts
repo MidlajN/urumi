@@ -47,17 +47,56 @@ export type CompanionReceivedMessage = {
 export type CompanionOutboundMessage =
     | CompanionReceivedMessage;
 
+/**
+ * Pipeline stage while a received image is being processed into the editor.
+ */
+export type CompanionReceiveStage =
+    | "idle"
+    | "vectorizing"
+    | "placing"
+    | "done";
+
+export type CompanionProgress = {
+    stage: CompanionReceiveStage;
+
+    /** Non-fatal problem, e.g. vectorization failed and the raw photo was used. */
+    warning: string | null;
+
+    /** Number of vectorized drawing objects added to the canvas. */
+    pathCount: number | null;
+};
+
 export type CompanionState = {
     status: CompanionSessionStatus;
     peerId: string | null;
     connected: boolean;
     error: string | null;
+    progress: CompanionProgress;
     reference: {
         exists: boolean;
         visible: boolean;
         opacity: number;
     };
 };
+
+export function createInitialCompanionState(): CompanionState {
+    return {
+        status: "idle",
+        peerId: null,
+        connected: false,
+        error: null,
+        progress: {
+            stage: "idle",
+            warning: null,
+            pathCount: null,
+        },
+        reference: {
+            exists: false,
+            visible: true,
+            opacity: 0.5,
+        },
+    };
+}
 
 export type CompanionStateListener = (
     state: CompanionState

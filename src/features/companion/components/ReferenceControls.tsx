@@ -12,28 +12,11 @@ import {
 import type {
     CompanionManager
 } from "../CompanionManager";
-import type {
-    CompanionState
+import {
+    createInitialCompanionState
 } from "../types";
 
-const initialState: CompanionState = {
-    status:
-        "idle",
-    peerId:
-        null,
-    connected:
-        false,
-    error:
-        null,
-    reference: {
-        exists:
-            false,
-        visible:
-            true,
-        opacity:
-            0.5
-    }
-};
+const initialState = createInitialCompanionState();
 
 export default function ReferenceControls({
     manager,

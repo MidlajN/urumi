@@ -11,6 +11,9 @@ import {
 import {
     compressImage
 } from "../utils/imageCompression";
+import {
+    MACHINE_CONFIG
+} from "@/features/editor/canvas/config";
 
 export type CompanionPageStatus =
     | "invalid"
@@ -253,9 +256,19 @@ export function useCompanionSession(
                         60
                     );
 
-                    await client.sendReferenceImage(
-                        compressed
-                    );
+                    // The captured photo covers the full machine bed, so its
+                    // physical size is the bed size in millimetres.
+                    await client.sendReferenceImage({
+                        image:
+                            compressed.image,
+                        physical_width:
+                            MACHINE_CONFIG.width,
+                        physical_height:
+                            MACHINE_CONFIG.height,
+                        dots_per_mm:
+                            compressed.width /
+                                MACHINE_CONFIG.width
+                    });
 
                     setProgress(
                         100

@@ -1,5 +1,11 @@
 import {
+    Check,
     CheckCircle2,
+    ImageDown,
+    LoaderCircle,
+    Route,
+    Scan,
+    TriangleAlert,
     X
 } from "lucide-react";
 import {
@@ -17,28 +23,134 @@ import {
 import type {
     CompanionManager
 } from "../CompanionManager";
-import type {
-    CompanionState
+import {
+    createInitialCompanionState,
+    type CompanionProgress
 } from "../types";
 
-const initialState: CompanionState = {
-    status:
-        "idle",
-    peerId:
-        null,
-    connected:
-        false,
-    error:
-        null,
-    reference: {
-        exists:
-            false,
-        visible:
-            true,
-        opacity:
-            0.5
+const initialState = createInitialCompanionState();
+
+type StepState = "pending" | "active" | "done";
+
+const RECEIVE_STEPS = [
+    {
+        key: "received",
+        label: "Image received",
+        detail: "Photo transferred from the companion app",
+        icon: ImageDown
+    },
+    {
+        key: "vectorizing",
+        label: "Vectorizing drawings",
+        detail: "Tracing pen lines into machine-ready paths",
+        icon: Route
+    },
+    {
+        key: "placing",
+        label: "Placing on workspace",
+        detail: "Aligning to the bed at physical scale",
+        icon: Scan
     }
-};
+] as const;
+
+function getStepState(
+    stepKey: (typeof RECEIVE_STEPS)[number]["key"],
+    progress: CompanionProgress
+): StepState {
+    const order = ["received", "vectorizing", "placing"] as const;
+
+    const stageIndex =
+        progress.stage === "done"
+            ? order.length
+            : progress.stage === "placing"
+                ? 2
+                : progress.stage === "vectorizing"
+                    ? 1
+                    : 0;
+
+    const stepIndex = order.indexOf(stepKey);
+
+    if (stepIndex < stageIndex) {
+        return "done";
+    }
+
+    return stepIndex === stageIndex ? "active" : "pending";
+}
+
+function ProgressStep({
+    label,
+    detail,
+    icon: Icon,
+    state,
+    isLast
+}: {
+    label: string;
+    detail: string;
+    icon: typeof ImageDown;
+    state: StepState;
+    isLast: boolean;
+}) {
+    return (
+        <div className="flex gap-3">
+            <div className="flex flex-col items-center">
+                <div
+                    className={`
+                        flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors
+                        ${state === "done"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                            : state === "active"
+                                ? "border-zinc-300 bg-white text-zinc-900 shadow-sm"
+                                : "border-zinc-200 bg-zinc-50 text-zinc-300"}
+                    `}
+                >
+                    {state === "done" ? (
+                        <Check size={14} strokeWidth={2.5} />
+                    ) : state === "active" ? (
+                        <LoaderCircle
+                            size={14}
+                            className="animate-spin"
+                        />
+                    ) : (
+                        <Icon size={14} />
+                    )}
+                </div>
+                {!isLast && (
+                    <div
+                        className={`
+                            my-1 w-px flex-1
+                            ${state === "done"
+                                ? "bg-emerald-200"
+                                : "bg-zinc-200"}
+                        `}
+                    />
+                )}
+            </div>
+
+            <div className={isLast ? "pb-0" : "pb-4"}>
+                <div
+                    className={`
+                        text-[13px] font-semibold
+                        ${state === "pending"
+                            ? "text-zinc-400"
+                            : "text-zinc-900"}
+                    `}
+                >
+                    {label}
+                </div>
+                <p
+                    className={`
+                        mt-0.5 text-[12px] leading-4
+                        ${state === "pending"
+                            ? "text-zinc-300"
+                            : "text-zinc-500"}
+                    `}
+                >
+                    {detail}
+                </p>
+            </div>
+        </div>
+    );
+}
 
 export default function CompanionQrModal({
     manager,
@@ -78,7 +190,7 @@ export default function CompanionQrModal({
             return "";
         }
 
-        const url = new URL(`${COMPANION_APP_URL}`);
+        const url = new URL(`${COMPANION_APP_URL}/reference`);
         url.searchParams.set("peerId", state.peerId);
 
         return url.toString();
@@ -95,6 +207,10 @@ export default function CompanionQrModal({
     const received =
         state.status ===
         "received";
+
+    const receiving =
+        state.status ===
+        "receiving";
 
     const statusLabel =
         state.status === "creating"
@@ -149,14 +265,18 @@ export default function CompanionQrModal({
                 <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
                     <div>
                         <h2 className="text-[15px] font-semibold text-zinc-950">
-                            {received
-                                ? "Reference Received"
-                                : "Capture Bed Reference"}
+                            {receiving
+                                ? "Processing Reference"
+                                : received
+                                    ? "Reference Received"
+                                    : "Capture Bed Reference"}
                         </h2>
                         <p className="mt-1 text-[12px] font-medium text-zinc-500">
-                            {received
-                                ? "Reference layer is ready"
-                                : "Scan from the companion app"}
+                            {receiving
+                                ? "Turning the capture into a bed overlay"
+                                : received
+                                    ? "Reference layer is ready"
+                                    : "Scan from the companion app"}
                         </p>
                     </div>
 
@@ -182,19 +302,74 @@ export default function CompanionQrModal({
                     </button>
                 </div>
 
-                {received ? (
+                {receiving ? (
+                    <div className="p-4">
+                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+                            {RECEIVE_STEPS.map((step, index) => (
+                                <ProgressStep
+                                    key={step.key}
+                                    label={step.label}
+                                    detail={step.detail}
+                                    icon={step.icon}
+                                    state={getStepState(
+                                        step.key,
+                                        state.progress
+                                    )}
+                                    isLast={
+                                        index ===
+                                        RECEIVE_STEPS.length - 1
+                                    }
+                                />
+                            ))}
+                        </div>
+
+                        {state.progress.warning && (
+                            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                                <TriangleAlert
+                                    size={14}
+                                    className="mt-0.5 shrink-0 text-amber-600"
+                                />
+                                <p className="text-[12px] font-medium leading-4 text-amber-700">
+                                    {state.progress.warning}
+                                </p>
+                            </div>
+                        )}
+
+                        <p className="mt-4 text-center text-[11px] font-medium text-zinc-400">
+                            This can take a few seconds on large captures.
+                        </p>
+                    </div>
+                ) : received ? (
                     <div className="p-4">
                         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
                             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
                                 <CheckCircle2 size={24} />
                             </div>
                             <div className="mt-3 text-[15px] font-semibold text-zinc-950">
-                                Image received
+                                Reference ready
                             </div>
                             <p className="mx-auto mt-2 max-w-xs text-[12px] leading-5 text-emerald-700">
-                                The reference layer has been added to the editor.
+                                {state.progress.pathCount
+                                    ? `${state.progress.pathCount} drawing${
+                                        state.progress.pathCount === 1
+                                            ? ""
+                                            : "s"
+                                    } vectorized and placed on the workspace.`
+                                    : "The reference layer has been added to the editor."}
                             </p>
                         </div>
+
+                        {state.progress.warning && (
+                            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                                <TriangleAlert
+                                    size={14}
+                                    className="mt-0.5 shrink-0 text-amber-600"
+                                />
+                                <p className="text-[12px] font-medium leading-4 text-amber-700">
+                                    {state.progress.warning}
+                                </p>
+                            </div>
+                        )}
 
                         <button
                             type="button"

@@ -83,7 +83,7 @@ type ObjectMovingEvent = {
     target: FabricObject;
 };
 
-function attachGeometryToImportedPath(
+export function attachGeometryToImportedPath(
     object: FabricObject
 ) {
     if (

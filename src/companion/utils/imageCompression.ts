@@ -1,12 +1,10 @@
-const MAX_LONG_SIDE =
-    1800;
+const MAX_LONG_SIDE = 1800;
 
-const JPEG_QUALITY =
-    0.8;
+const JPEG_QUALITY = 0.8;
 
 export type CompressedImage = {
-    data: ArrayBuffer;
-    mime: "image/jpeg";
+    /** JPEG data URL. */
+    image: string;
     width: number;
     height: number;
 };
@@ -88,41 +86,12 @@ export async function compressImage(
         height
     );
 
-    const blob =
-        await new Promise<Blob>(
-            (
-                resolve,
-                reject
-            ) => {
-                canvas.toBlob(
-                    (
-                        result
-                    ) => {
-                        if (
-                            result
-                        ) {
-                            resolve(
-                                result
-                            );
-                        } else {
-                            reject(
-                                new Error(
-                                    "Unable to compress image."
-                                )
-                            );
-                        }
-                    },
-                    "image/jpeg",
-                    JPEG_QUALITY
-                );
-            }
-        );
-
     return {
-        data:
-            await blob.arrayBuffer(),
-        mime:
-            "image/jpeg",
+        image:
+            canvas.toDataURL(
+                "image/jpeg",
+                JPEG_QUALITY
+            ),
         width,
         height
     };

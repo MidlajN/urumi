@@ -1,4 +1,13 @@
-import { Canvas, FabricImage, Rect } from "fabric";
+import {
+    Canvas,
+    FabricImage,
+    FabricObject,
+    Rect,
+    loadSVGFromString,
+} from "fabric";
+
+import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
+import { attachGeometryToImportedPath } from "@/features/editor/canvas/engine/Workspace";
 
 import type { CompanionReferencePayload } from "../types";
 
@@ -33,6 +42,74 @@ export class ReferenceLayerManager {
         this.source = payload;
 
         this.replaceImage(image);
+    }
+
+    /**
+     * Parses the vectorized drawings extracted from the bed image and adds
+     * them to the canvas as regular editable objects. The SVG viewBox matches
+     * the image's pixel dimensions, so applying the overlay's transform lands
+     * every path exactly on top of its drawing.
+     */
+    async addVectorizedSvg(svgString: string) {
+        const source = this.source;
+
+        if (!source) {
+            return [];
+        }
+
+        const loaded = await loadSVGFromString(svgString);
+
+        const objects = loaded.objects.filter(
+            (object): object is FabricObject =>
+                object !== null &&
+                // The generator emits a magenta bed-frame rect; it marks the
+                // bed outline and must not become a drawing object.
+                String(object.stroke).toUpperCase() !== "#FF00FF",
+        );
+
+        if (objects.length === 0) {
+            return [];
+        }
+
+        const workspaceBounds = this.getWorkspace().getBoundingRect();
+
+        const viewWidth =
+            loaded.options.width || this.image?.width || 1;
+
+        const viewHeight =
+            loaded.options.height || this.image?.height || 1;
+
+        const scaleX = (source.physical_width * PX_PER_MM) / viewWidth;
+
+        const scaleY = (source.physical_height * PX_PER_MM) / viewHeight;
+
+        objects.forEach((object) => {
+            ensureManufacturingMetadata(object);
+
+            object.set({
+                fill: "transparent",
+                stroke: object.stroke || "#111827",
+                strokeWidth: 2,
+                strokeUniform: true,
+            });
+
+            attachGeometryToImportedPath(object);
+
+            object.set({
+                left: workspaceBounds.left + (object.left ?? 0) * scaleX,
+                top: workspaceBounds.top + (object.top ?? 0) * scaleY,
+                scaleX: (object.scaleX ?? 1) * scaleX,
+                scaleY: (object.scaleY ?? 1) * scaleY,
+            });
+
+            object.setCoords();
+
+            this.canvas.add(object);
+        });
+
+        this.canvas.requestRenderAll();
+
+        return objects;
     }
 
     remove() {

@@ -3,11 +3,16 @@ import type { Canvas, Rect } from "fabric";
 import { PeerTransport } from "./transport/PeerTransport";
 import type { CompanionTransport } from "./transport/CompanionTransport";
 import { ReferenceLayerManager } from "./reference/ReferenceLayerManager";
+import { vectorizeReferenceImage } from "./reference/vectorizeReference";
 import {
+  createInitialCompanionState,
   type CompanionInboundMessage,
+  type CompanionProgress,
+  type CompanionReferencePayload,
   type CompanionState,
   type CompanionStateListener,
 } from "./types";
+import type { VectorizedReference } from "./reference/vectorizeReference";
 
 export class CompanionManager {
     private transport: CompanionTransport;
@@ -16,17 +21,7 @@ export class CompanionManager {
 
     private listeners = new Set<CompanionStateListener>();
 
-    private state: CompanionState = {
-        status: "idle",
-        peerId: null,
-        connected: false,
-        error: null,
-        reference: {
-            exists: false,
-            visible: true,
-            opacity: 0.5,
-        },
-    };
+    private state: CompanionState = createInitialCompanionState();
 
     constructor(
         canvas: Canvas,
@@ -158,9 +153,67 @@ export class CompanionManager {
                 status: "receiving",
             });
 
+            this.setProgress({
+                stage: "vectorizing",
+                warning: null,
+                pathCount: null,
+            });
+
             try {
                 console.log('message : ', message)
-                await this.referenceLayer.loadImage(message.payload);
+
+                // Vectorization failure is non-fatal — the raw photo still
+                // loads as the overlay.
+                let vectorized: VectorizedReference | null = null;
+
+                try {
+                    vectorized = await vectorizeReferenceImage(
+                        message.payload.image,
+                    );
+                } catch (vectorizationError) {
+                    console.warn(
+                        "Reference vectorization failed",
+                        vectorizationError,
+                    );
+
+                    this.setProgress({
+                        warning:
+                            "Drawings could not be vectorized — showing the photo only.",
+                    });
+                }
+
+                this.setProgress({
+                    stage: "placing",
+                });
+
+                // Prefer the pipeline's perspective-corrected image and its
+                // measured physical size over the raw companion payload.
+                const overlayPayload: CompanionReferencePayload = vectorized
+                    ? {
+                        image: vectorized.image,
+                        physical_width:
+                            vectorized.meta.physical_width ??
+                            message.payload.physical_width,
+                        physical_height:
+                            vectorized.meta.physical_height ??
+                            message.payload.physical_height,
+                        dots_per_mm:
+                            vectorized.meta.dots_per_mm ??
+                            message.payload.dots_per_mm,
+                    }
+                    : message.payload;
+
+                await this.referenceLayer.loadImage(overlayPayload);
+
+                let pathCount = 0;
+
+                if (vectorized) {
+                    const objects = await this.referenceLayer.addVectorizedSvg(
+                        vectorized.svg,
+                    );
+
+                    pathCount = objects.length;
+                }
 
                 this.transport.send({
                     type: "received",
@@ -169,7 +222,16 @@ export class CompanionManager {
                 this.syncReferenceState({
                     status: "received",
                 });
+
+                this.setProgress({
+                    stage: "done",
+                    pathCount: vectorized ? pathCount : null,
+                });
             } catch (error) {
+                this.setProgress({
+                    stage: "idle",
+                });
+
                 this.setState({
                     status: "error",
                     error:
@@ -180,6 +242,15 @@ export class CompanionManager {
             }
         }
     };
+
+  private setProgress(patch: Partial<CompanionProgress>) {
+    this.setState({
+      progress: {
+        ...this.state.progress,
+        ...patch,
+      },
+    });
+  }
 
   private syncReferenceState(patch: Partial<CompanionState> = {}) {
     this.setState({
