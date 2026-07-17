@@ -1,6 +1,3 @@
-export const COMPANION_PROTOCOL_VERSION =
-    1;
-
 export type CompanionSessionStatus =
     | "idle"
     | "creating"
@@ -10,31 +7,45 @@ export type CompanionSessionStatus =
     | "received"
     | "error";
 
+/**
+ * Messages received from the companion app.
+ */
 export type CompanionReadyMessage = {
-    version: 1;
-    type: "ready";
+    type: "MOBILE_APP_READY";
 };
 
+export type CompanionReferencePayload = {
+    /** Data URL, e.g. "data:image/jpeg;base64,..." */
+    image: string;
+
+    /** Bed width in millimetres. */
+    physical_width: number;
+
+    /** Bed height in millimetres. */
+    physical_height: number;
+
+    dots_per_mm: number;
+};
+
+export type CompanionReferenceMessage = {
+    type: "PROCESSING_COMPLETE";
+
+    payload: CompanionReferencePayload;
+};
+
+export type CompanionInboundMessage =
+    | CompanionReadyMessage
+    | CompanionReferenceMessage;
+
+/**
+ * Messages sent to the companion app.
+ */
 export type CompanionReceivedMessage = {
-    version: 1;
     type: "received";
 };
 
-export type CompanionReferenceImageMessage = {
-    version: 1;
-    type: "reference-image";
-    mime: "image/jpeg" | "image/png" | string;
-    width: number;
-    height: number;
-    data: ArrayBuffer;
-};
-
 export type CompanionOutboundMessage =
-    | CompanionReadyMessage
     | CompanionReceivedMessage;
-
-export type CompanionInboundMessage =
-    | CompanionReferenceImageMessage;
 
 export type CompanionState = {
     status: CompanionSessionStatus;

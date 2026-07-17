@@ -2,7 +2,6 @@ import {
     Eye,
     EyeOff,
     RefreshCcw,
-    SlidersHorizontal,
     Trash2
 } from "lucide-react";
 import {
@@ -16,7 +15,6 @@ import type {
 import type {
     CompanionState
 } from "../types";
-import ReferenceAdjustmentModal from "./ReferenceAdjustmentModal";
 
 const initialState: CompanionState = {
     status:
@@ -51,12 +49,6 @@ export default function ReferenceControls({
         initialState
     );
 
-    const [
-        adjustmentOpen,
-        setAdjustmentOpen
-    ] = useState(
-        false
-    );
 
     useEffect(() => {
         if (
@@ -82,35 +74,6 @@ export default function ReferenceControls({
     return (
         <>
             <div className="pointer-events-auto absolute right-4 top-4 z-40 flex flex-col items-end gap-2">
-                <button
-                    type="button"
-                    aria-label="Adjust reference perspective"
-                    title="Adjust reference perspective"
-                    onClick={() =>
-                        setAdjustmentOpen(
-                            true
-                        )
-                    }
-                    className="
-                        flex
-                        h-10
-                        w-10
-                        items-center
-                        justify-center
-                        rounded-lg
-                        border
-                        border-zinc-200
-                        bg-white/95
-                        text-zinc-700
-                        shadow-lg
-                        backdrop-blur
-                        hover:bg-zinc-50
-                        hover:text-zinc-950
-                    "
-                >
-                    <SlidersHorizontal size={17} />
-                </button>
-
                 <div
                     className="
                         w-56
@@ -209,19 +172,6 @@ export default function ReferenceControls({
                     </div>
                 </div>
             </div>
-            <ReferenceAdjustmentModal
-                manager={
-                    manager
-                }
-                open={
-                    adjustmentOpen
-                }
-                onClose={() =>
-                    setAdjustmentOpen(
-                        false
-                    )
-                }
-            />
         </>
     );
 }

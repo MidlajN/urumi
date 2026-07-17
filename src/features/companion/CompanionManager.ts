@@ -1,26 +1,12 @@
-import type {
-    Canvas,
-    Rect
-} from "fabric";
+import type { Canvas, Rect } from "fabric";
 
+import { PeerTransport } from "./transport/PeerTransport";
+import type { CompanionTransport } from "./transport/CompanionTransport";
+import { ReferenceLayerManager } from "./reference/ReferenceLayerManager";
 import {
-    getCompanionReferenceUrl
-} from "./config";
-import {
-    PeerTransport
-} from "./transport/PeerTransport";
-import type {
-    CompanionTransport
-} from "./transport/CompanionTransport";
-import {
-    ReferenceLayerManager
-} from "./reference/ReferenceLayerManager";
-import {
-    COMPANION_PROTOCOL_VERSION,
-    type CompanionInboundMessage,
-    type CompanionReferenceImageMessage,
-    type CompanionState,
-    type CompanionStateListener
+  type CompanionInboundMessage,
+  type CompanionState,
+  type CompanionStateListener,
 } from "./types";
 
 export class CompanionManager {
@@ -28,170 +14,97 @@ export class CompanionManager {
 
     private referenceLayer: ReferenceLayerManager;
 
-    private listeners =
-        new Set<CompanionStateListener>();
+    private listeners = new Set<CompanionStateListener>();
 
     private state: CompanionState = {
-        status:
-            "idle",
-        peerId:
-            null,
-        connected:
-            false,
-        error:
-            null,
+        status: "idle",
+        peerId: null,
+        connected: false,
+        error: null,
         reference: {
-            exists:
-                false,
-            visible:
-                true,
-            opacity:
-                0.5
-        }
+            exists: false,
+            visible: true,
+            opacity: 0.5,
+        },
     };
 
     constructor(
         canvas: Canvas,
         getWorkspace: () => Rect,
-        transport: CompanionTransport =
-            new PeerTransport()
+        transport: CompanionTransport = new PeerTransport(),
     ) {
-        this.transport =
-            transport;
+        this.transport = transport;
 
-        this.referenceLayer =
-            new ReferenceLayerManager(
-                canvas,
-                getWorkspace
-            );
+        this.referenceLayer = new ReferenceLayerManager(canvas, getWorkspace);
 
-        this.transport.onMessage(
-            this.handleMessage
-        );
+        this.transport.onMessage(this.handleMessage);
 
-        this.transport.onConnectionStatus(
-            (
-                status,
-                error
-            ) => {
-                if (
-                    status === "connected"
-                ) {
-                    this.setState({
-                        status:
-                            "connected",
-                        connected:
-                            true,
-                        error:
-                            null
-                    });
-
-                    this.transport.send({
-                        version:
-                            COMPANION_PROTOCOL_VERSION,
-                        type:
-                            "ready"
-                    });
-                }
-
-                if (
-                    status === "closed"
-                ) {
-                    this.setState({
-                        connected:
-                            false,
-                        status:
-                            this.state.reference.exists
-                                ? "received"
-                                : "waiting"
-                    });
-                }
-
-                if (
-                    status === "error"
-                ) {
-                    this.setState({
-                        status:
-                            "error",
-                        connected:
-                            false,
-                        error:
-                            error?.message ??
-                            "Companion connection failed"
-                    });
-                }
+        this.transport.onConnectionStatus((status, error) => {
+            if (status === "connected") {
+                this.setState({
+                    status: "connected",
+                    connected: true,
+                    error: null,
+                });
             }
-        );
+
+            if (status === "closed") {
+                this.setState({
+                    connected: false,
+                    status: this.state.reference.exists ? "received" : "waiting",
+                });
+            }
+
+            if (status === "error") {
+                this.setState({
+                    status: "error",
+                    connected: false,
+                    error: error?.message ?? "Companion connection failed",
+                });
+            }
+        });
     }
 
     async createReferenceSession() {
         this.setState({
-            status:
-                "creating",
-            peerId:
-                null,
-            connected:
-                false,
-            error:
-                null
+            status: "creating",
+            peerId: null,
+            connected: false,
+            error: null,
         });
 
         try {
-            const session =
-                await this.transport.createSession();
+            const session = await this.transport.createSession();
 
             this.setState({
-                status:
-                    "waiting",
-                peerId:
-                    session.peerId,
-                connected:
-                    false,
-                error:
-                    null
+                status: "waiting",
+                peerId: session.peerId,
+                connected: false,
+                error: null,
             });
         } catch (error) {
             this.setState({
-                status:
-                    "error",
+                status: "error",
                 error:
-                    error instanceof Error
-                        ? error.message
-                        : "Unable to create companion session"
+                error instanceof Error
+                    ? error.message
+                    : "Unable to create companion session",
             });
         }
     }
 
     closeReferenceSession() {
         this.transport.closeSession();
+
         this.setState({
-            status:
-                this.state.reference.exists
-                    ? "received"
-                    : "idle",
-            peerId:
-                null,
-            connected:
-                false
+            status: this.state.reference.exists ? "received" : "idle",
+            peerId: null,
+            connected: false,
         });
     }
 
-    getReferenceUrl() {
-        // console.log("Manager peerId:", this.state.peerId);
-
-        return this.state.peerId
-            ? getCompanionReferenceUrl(
-                this.state.peerId
-            )
-            : "";
-    }
-
-    setReferenceOpacity(
-        opacity: number
-    ) {
-        this.referenceLayer.setOpacity(
-            opacity
-        );
+    setReferenceOpacity(opacity: number) {
+        this.referenceLayer.setOpacity(opacity);
         this.syncReferenceState();
     }
 
@@ -210,55 +123,12 @@ export class CompanionManager {
         this.syncReferenceState();
     }
 
-    getReferenceSource() {
-        return this.referenceLayer.getSource();
-    }
-
-    async replaceReferenceSource(
-        message: CompanionReferenceImageMessage
-    ) {
-        this.setState({
-            status:
-                "receiving",
-            error:
-                null
-        });
-
-        try {
-            await this.referenceLayer.replaceSource(
-                message
-            );
-
-            this.syncReferenceState({
-                status:
-                    "received"
-            });
-        } catch (error) {
-            this.setState({
-                status:
-                    "error",
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Unable to update reference image"
-            });
-        }
-    }
-
-    subscribe(
-        listener: CompanionStateListener
-    ) {
-        this.listeners.add(
-            listener
-        );
-        listener(
-            this.state
-        );
+    subscribe(listener: CompanionStateListener) {
+        this.listeners.add(listener);
+        listener(this.state);
 
         return () => {
-            this.listeners.delete(
-                listener
-            );
+            this.listeners.delete(listener);
         };
     }
 
@@ -272,69 +142,58 @@ export class CompanionManager {
         this.listeners.clear();
     }
 
-    private handleMessage =
-        async (
-            message: CompanionInboundMessage
-        ) => {
-            if (
-                message.version !==
-                COMPANION_PROTOCOL_VERSION
-            ) {
-                return;
-            }
+    private handleMessage = async (message: CompanionInboundMessage) => {
+        if (message.type === "MOBILE_APP_READY") {
+            this.setState({
+                status: "connected",
+                connected: true,
+                error: null,
+            });
 
-            if (
-                message.type ===
-                "reference-image"
-            ) {
-                this.setState({
-                    status:
-                        "receiving"
-                });
+            return;
+        }
 
-                await this.referenceLayer.loadImage(
-                    message
-                );
+        if (message.type === "PROCESSING_COMPLETE") {
+            this.setState({
+                status: "receiving",
+            });
+
+            try {
+                console.log('message : ', message)
+                await this.referenceLayer.loadImage(message.payload);
 
                 this.transport.send({
-                    version:
-                        COMPANION_PROTOCOL_VERSION,
-                    type:
-                        "received"
+                    type: "received",
                 });
 
                 this.syncReferenceState({
-                    status:
-                        "received"
+                    status: "received",
+                });
+            } catch (error) {
+                this.setState({
+                    status: "error",
+                    error:
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to load reference image",
                 });
             }
-        };
+        }
+    };
 
-    private syncReferenceState(
-        patch: Partial<CompanionState> = {}
-    ) {
-        this.setState({
-            ...patch,
-            reference:
-                this.referenceLayer.getState()
-        });
-    }
+  private syncReferenceState(patch: Partial<CompanionState> = {}) {
+    this.setState({
+      ...patch,
+      reference: this.referenceLayer.getState(),
+    });
+  }
 
-    private setState(
-        patch: Partial<CompanionState>
-    ) {
-        this.state = {
-            ...this.state,
-            ...patch
-        };
+  private setState(patch: Partial<CompanionState>) {
+    this.state = {
+      ...this.state,
+      ...patch,
+    };
 
-        this.listeners.forEach(
-            (
-                listener
-            ) =>
-                listener(
-                    this.state
-                )
-        );
-    }
+    this.listeners.forEach((listener) => listener(this.state));
+  }
 }

@@ -78,8 +78,8 @@ export default function CompanionQrModal({
             return "";
         }
 
-        const url = new URL(`${COMPANION_APP_URL}/reference`);
-        url.searchParams.set("peer", state.peerId);
+        const url = new URL(`${COMPANION_APP_URL}`);
+        url.searchParams.set("peerId", state.peerId);
 
         return url.toString();
     }, [state.peerId]);

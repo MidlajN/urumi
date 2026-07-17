@@ -24,9 +24,7 @@ export class PeerTransport implements CompanionTransport {
         this.closeSession();
 
         return new Promise<{ peerId: string; }>((resolve, reject) => {
-            const peer = new Peer({
-                debug: 3
-            });
+            const peer = new Peer();
 
             this.peer = peer;
 
@@ -38,20 +36,6 @@ export class PeerTransport implements CompanionTransport {
 
             peer.on("connection", (connection) => {
                 this.bindConnection(connection);
-
-                console.log(connection);
-
-                console.log(connection.peer);
-                console.log(connection.connectionId);
-                console.log(connection.open);
-
-                console.log((connection as any)._negotiator);
-                console.log((connection as any).peerConnection);
-                console.log((connection as any)._peerConnection);
-            });
-
-            peer.on("connection", () => {
-                console.log("Desktop: incoming connection");
             });
 
             peer.on("error", (error) => {
@@ -88,33 +72,26 @@ export class PeerTransport implements CompanionTransport {
     }
 
     private bindConnection(connection: DataConnection) {
-        console.log("Desktop: bindConnection");
-
         this.connection?.close();
         this.connection = connection;
 
         connection.on("open", () => {
-            console.log("Desktop: connection open");
             this.emitConnectionStatus("connected");
         });
 
         connection.on("data", (data) => {
-            console.log("Desktop: received", data);
             this.messageListeners.forEach((listener) =>
                 listener(data as CompanionInboundMessage),
             );
         });
 
         connection.on("close", () => {
-            console.log("Desktop: connection closed");
             this.emitConnectionStatus("closed");
         });
 
         connection.on("error", (error) => {
-            console.log("Desktop: connection error", error);
             this.emitConnectionStatus("error", error);
         });
-
     }
 
     private emitConnectionStatus(
