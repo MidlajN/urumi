@@ -22,6 +22,7 @@ export interface MaterialToolConfiguration {
 }
 
 export interface MaterialOperation {
+    enabled: boolean;
 
     toolConfigurations:
         MaterialToolConfiguration[];

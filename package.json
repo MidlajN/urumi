@@ -24,6 +24,7 @@
     "react-dom": "^19.2.6",
     "svg-skeletonization": "^1.0.0",
     "tailwindcss": "^4.3.0",
+    "urumi-toolpath": "^0.1.0",
     "vitest": "^4.1.9",
     "zustand": "^5.0.14"
   },
@@ -39,6 +40,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/w3c-web-serial": "^1.0.8",
     "@vitejs/plugin-react": "^6.0.1",
+    "@xmldom/xmldom": "^0.9.10",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",

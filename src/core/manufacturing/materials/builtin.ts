@@ -17,6 +17,8 @@ export const BUILTIN_MATERIALS: readonly Material[] = [
 
             cut: {
 
+                enabled: true,
+
                 toolConfigurations: [
 
                     {
@@ -55,6 +57,8 @@ export const BUILTIN_MATERIALS: readonly Material[] = [
 
             crease: {
 
+                enabled: true,
+
                 toolConfigurations: [
 
                     {
@@ -77,6 +81,8 @@ export const BUILTIN_MATERIALS: readonly Material[] = [
             },
 
             draw: {
+
+                enabled: true,
 
                 toolConfigurations: [
 
@@ -115,6 +121,8 @@ export const BUILTIN_MATERIALS: readonly Material[] = [
         operations: {
 
             draw: {
+
+                enabled: true,
 
                 toolConfigurations: [
 

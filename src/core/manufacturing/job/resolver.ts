@@ -8,6 +8,7 @@ import {
 
 import type {
     Material,
+    MaterialToolConfiguration,
 } from "../materials/types";
 
 import type {
@@ -24,6 +25,8 @@ export interface ResolvedJobOperation {
 
     tool: ToolProfile;
 
+    materialToolConfiguration: MaterialToolConfiguration;
+
 }
 
 export interface ResolvedManufacturingJob {
@@ -38,6 +41,11 @@ export interface ResolvedManufacturingJob {
 
 }
 
+/**
+ * Resolves a manufacturing job into concrete registry entries. After this
+ * returns, downstream code never needs getMaterial(), getToolProfile(), or
+ * material.operations lookups — the resolved job carries everything.
+ */
 export function resolveJob(
     job: ManufacturingJob
 ): ResolvedManufacturingJob | null {
@@ -81,6 +89,25 @@ export function resolveJob(
             continue;
         }
 
+        const materialOperation =
+            material.operations[
+                operationId as keyof typeof material.operations
+            ];
+
+        if (!materialOperation?.enabled) {
+            continue;
+        }
+
+        const materialToolConfiguration =
+            materialOperation.toolConfigurations.find(
+                (configuration) =>
+                    configuration.toolId === selection.toolId
+            );
+
+        if (!materialToolConfiguration?.enabled) {
+            continue;
+        }
+
         operations[
             operationId
         ] = {
@@ -88,6 +115,8 @@ export function resolveJob(
             operationId,
 
             tool,
+
+            materialToolConfiguration,
 
         };
 

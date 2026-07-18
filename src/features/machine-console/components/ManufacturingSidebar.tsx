@@ -18,6 +18,7 @@ import {
     Layers3
 } from "lucide-react";
 
+import ExecutionDocumentPanel from "./ExecutionDocumentPanel";
 import MaterialSection from "./MaterialSection";
 import MaterialToolSettingsModal from "./MaterialToolSettingsModal";
 import OperationCard from "./OperationCard";
@@ -333,6 +334,15 @@ export default function ManufacturingSidebar() {
                             )}
                         </div>
                     )}
+                </div>
+
+                {/* TEMPORARY: Execution Document inspection panel (remove with ExecutionDocumentPanel.tsx). */}
+                <div className="mt-5">
+                    <ExecutionDocumentPanel
+                        summary={
+                            summary
+                        }
+                    />
                 </div>
             </div>
 
