@@ -13,22 +13,15 @@ export interface SvgViewBox {
 export interface SvgExportOptions {
 
     /**
-     * Explicit view box in canvas units, e.g. the machine bed. When omitted,
-     * the view box is computed from the bounds of the exported objects.
+     * Explicit view box in canvas units. When omitted, the document's bed is
+     * used; content bounds are the fallback when the document has no bed.
      */
     viewBox?: SvgViewBox;
 
     /**
-     * Padding around the auto-computed bounds, in canvas units. Ignored when
-     * an explicit viewBox is provided.
+     * Padding around the auto-computed content bounds, in canvas units. Only
+     * applies to the no-bed fallback.
      */
     margin?: number;
-
-    /**
-     * When set, emits width/height attributes on the svg root equal to the
-     * view box size in this unit, making the document's physical scale
-     * self-describing ("px" = CSS pixels at 96 dpi, the canvas unit).
-     */
-    dimensionUnit?: "px" | "mm";
 
 }

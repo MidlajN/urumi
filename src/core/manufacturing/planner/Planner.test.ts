@@ -46,10 +46,12 @@ function knifeConfiguration(
 
 function buildDocument(
     objects: FabricObject[],
-    passes = 1
+    passes = 1,
+    bed: ExecutionDocument["bed"] = null
 ): ExecutionDocument {
     return {
         material,
+        bed,
         operations: [
             {
                 operationId: "cut",
@@ -177,6 +179,44 @@ describe("Planner", () => {
 
         expect(anchored.plan.blocks[0].startSteps).not.toEqual(
             floating.plan.blocks[0].startSteps
+        );
+    });
+
+    it("bakes absolute machine coordinates matching the canvas position", () => {
+        // 300mm × 400mm bed in canvas px (96 dpi)
+        const bed = {
+            left: 0,
+            top: 0,
+            width: (300 * 96) / 25.4,
+            height: (400 * 96) / 25.4,
+        };
+
+        const result = new Planner().plan(
+            buildDocument([testRect()], 1, bed)
+        );
+
+        // testRect is centered at (200, 200) px, 150×100 → top-left corner at
+        // (125, 150) px = (33.07, 39.69) mm; machine Y-up: 400 − 39.69 =
+        // 360.31 mm; × 26.5 steps/mm → (876, 9548)
+        const { startSteps } = result.plan.blocks[0];
+
+        expect(Math.abs(startSteps.x - 876)).toBeLessThanOrEqual(2);
+        expect(Math.abs(startSteps.y - 9548)).toBeLessThanOrEqual(2);
+    });
+
+    it("anchors machine coordinates to the document bed by default", () => {
+        const bed = { left: 0, top: 0, width: 1134, height: 1512 };
+
+        const viaBed = new Planner().plan(
+            buildDocument([testRect()], 1, bed)
+        );
+
+        const viaOverride = new Planner().plan(buildDocument([testRect()]), {
+            viewBox: bed,
+        });
+
+        expect(viaBed.plan.blocks[0].startSteps).toEqual(
+            viaOverride.plan.blocks[0].startSteps
         );
     });
 });

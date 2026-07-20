@@ -7,6 +7,14 @@ import {
     SvgBuilder,
 } from "./SvgBuilder";
 
+import {
+    formatSvgNumber,
+} from "./SvgBuilder";
+
+import {
+    serializeObject,
+} from "./serializeObject";
+
 import type {
     SvgExportOptions,
     SvgViewBox,
@@ -14,11 +22,18 @@ import type {
 
 const DEFAULT_MARGIN = 10;
 
+/** Canvas units are CSS px at 96 dpi. */
+const MM_PER_PX = 25.4 / 96;
+
 /**
  * Serializes an ExecutionDocument into an SVG string, grouped by operation.
- * Geometry serialization is delegated to Fabric's own toSVG(). Consumes only
- * the document — no canvas access, no registry lookups, no Fabric mutations,
- * and no knowledge of any downstream planner.
+ * The document maps the machine bed: the view box is the bed rect and the
+ * root carries the bed's physical size in millimetres, so the geometry is
+ * bed-anchored and to scale for any consumer. Objects are flattened to
+ * absolute-coordinate paths with no transform attributes (pre-normalised
+ * SVG — see serializeObject). Consumes only the document — no canvas
+ * access, no registry lookups, no Fabric mutations, and no knowledge of any
+ * downstream planner.
  */
 export class SvgExporter {
 
@@ -38,11 +53,13 @@ export class SvgExporter {
 
             for (const executionObject of operation.objects) {
 
-                builder.addElement(
+                const markup = serializeObject(
                     executionObject.fabricObject
-                        .toSVG()
-                        .trim()
                 );
+
+                if (markup) {
+                    builder.addElement(markup);
+                }
             }
 
             builder.closeGroup();
@@ -50,6 +67,7 @@ export class SvgExporter {
 
         const viewBox =
             options.viewBox ??
+            document.bed ??
             computeViewBox(
                 document,
                 options.margin ?? DEFAULT_MARGIN
@@ -57,7 +75,10 @@ export class SvgExporter {
 
         return builder.build(
             viewBox,
-            options.dimensionUnit
+            {
+                width: `${formatSvgNumber(viewBox.width * MM_PER_PX)}mm`,
+                height: `${formatSvgNumber(viewBox.height * MM_PER_PX)}mm`,
+            }
         );
     }
 }

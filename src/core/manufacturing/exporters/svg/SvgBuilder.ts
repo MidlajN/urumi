@@ -62,7 +62,10 @@ export class SvgBuilder {
 
     build(
         viewBox: SvgViewBox,
-        dimensionUnit?: "px" | "mm"
+        dimensions?: {
+            width: string;
+            height: string;
+        }
     ): string {
 
         const viewBoxValue = [
@@ -74,12 +77,12 @@ export class SvgBuilder {
             .map(formatSvgNumber)
             .join(" ");
 
-        const dimensions = dimensionUnit
-            ? ` width="${formatSvgNumber(viewBox.width)}${dimensionUnit}" height="${formatSvgNumber(viewBox.height)}${dimensionUnit}"`
+        const dimensionAttributes = dimensions
+            ? ` width="${escapeXml(dimensions.width)}" height="${escapeXml(dimensions.height)}"`
             : "";
 
         return [
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBoxValue}"${dimensions}>`,
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBoxValue}"${dimensionAttributes}>`,
             ...this.lines,
             "</svg>",
         ].join("\n");

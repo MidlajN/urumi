@@ -33,10 +33,12 @@ const knifeConfiguration: MaterialToolConfiguration = {
 };
 
 function buildDocument(
-    operations: { operationId: string; objects: FabricObject[] }[]
+    operations: { operationId: string; objects: FabricObject[] }[],
+    bed: ExecutionDocument["bed"] = null
 ): ExecutionDocument {
     return {
         material,
+        bed,
         operations: operations.map(({ operationId, objects }) => ({
             operationId,
             tool: knife,
@@ -47,7 +49,7 @@ function buildDocument(
 }
 
 describe("SvgExporter", () => {
-    it("groups serialized objects by operation with tool metadata", () => {
+    it("groups flattened objects by operation with tool metadata", () => {
         const rect = new Rect({
             left: 10,
             top: 20,
@@ -74,14 +76,15 @@ describe("SvgExporter", () => {
         expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg" viewBox="');
         expect(svg).toContain('<g id="cut" data-tool="tangential-knife" data-velocity="700" data-acceleration="1200" data-passes="1">');
         expect(svg).toContain('<g id="draw"');
-        expect(svg).toContain('x="-50" y="-25" rx="0" ry="0" width="100" height="50"');
-        expect(svg).toContain("stroke: rgb(17,24,39)");
-        // fabric defaults origin to center, so left/top is the rect center
-        expect(svg).toContain('transform="matrix(1 0 0 1 10 20)"');
-        expect(svg).toContain('cx="0" cy="0" r="25"');
+        // fabric defaults origin to center: left/top (10, 20) is the center
+        expect(svg).toContain('d="M -40 -5 L 60 -5 L 60 45 L -40 45 Z"');
+        expect(svg).toContain('stroke="#111827"');
+        expect(svg).toContain('d="M 25 0 C 25 13.807');
+        // pre-normalised output: the planner ignores transform attributes
+        expect(svg).not.toContain("transform=");
     });
 
-    it("preserves path geometry through the pathOffset transform", () => {
+    it("flattens path geometry to absolute coordinates", () => {
         const path = new Path("M 0 0 L 10 10", { strokeWidth: 0 });
 
         const svg = new SvgExporter().export(
@@ -89,12 +92,10 @@ describe("SvgExporter", () => {
         );
 
         expect(svg).toContain('d="M 0 0 L 10 10"');
-        // fabric emits the object transform plus the -pathOffset translate
-        expect(svg).toContain('transform="matrix(1 0 0 1 5 5)"');
-        expect(svg).toContain("translate(-5, -5)");
+        expect(svg).not.toContain("transform=");
     });
 
-    it("serializes lines and polylines in local coordinates", () => {
+    it("flattens lines and polylines to absolute coordinates", () => {
         const line = new Line([0, 0, 40, 0], { strokeWidth: 0 });
 
         const polyline = new Polyline(
@@ -112,8 +113,8 @@ describe("SvgExporter", () => {
             ])
         );
 
-        expect(svg).toContain('x1="-20" y1="0" x2="20" y2="0"');
-        expect(svg).toContain('points="-5,-5 5,-5 5,5"');
+        expect(svg).toContain('d="M 0 0 L 40 0"');
+        expect(svg).toContain('d="M 0 0 L 10 0 L 10 10"');
     });
 
     it("skips unsupported object types and falls back to an empty view box", () => {
@@ -131,5 +132,30 @@ describe("SvgExporter", () => {
         );
 
         expect(svg).toContain('viewBox="0 0 300 400"');
+    });
+
+    it("anchors the view box to the document bed with mm dimensions", () => {
+        // 300mm × 400mm bed in canvas px (96 dpi)
+        const bed = {
+            left: 0,
+            top: 0,
+            width: (300 * 96) / 25.4,
+            height: (400 * 96) / 25.4,
+        };
+
+        const rect = new Rect({
+            left: 100,
+            top: 100,
+            width: 50,
+            height: 50,
+            strokeWidth: 0,
+        });
+
+        const svg = new SvgExporter().export(
+            buildDocument([{ operationId: "cut", objects: [rect] }], bed)
+        );
+
+        expect(svg).toContain('viewBox="0 0 1133.858 1511.811"');
+        expect(svg).toContain('width="300mm" height="400mm"');
     });
 });

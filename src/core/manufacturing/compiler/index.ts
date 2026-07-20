@@ -3,6 +3,7 @@ export {
 } from "./compileExecutionDocument";
 
 export type {
+    ExecutionBed,
     ExecutionDocument,
     ExecutionObject,
     ExecutionOperation,

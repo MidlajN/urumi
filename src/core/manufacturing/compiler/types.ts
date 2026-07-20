@@ -34,6 +34,23 @@ export interface ExecutionOperation {
 }
 
 /**
+ * The machine bed rect in canvas units (CSS px at 96 dpi; 1 mm = 96/25.4
+ * units). Captured from the workspace at compile time so exporters never
+ * need to read the canvas for machine context.
+ */
+export interface ExecutionBed {
+
+    left: number;
+
+    top: number;
+
+    width: number;
+
+    height: number;
+
+}
+
+/**
  * The canonical manufacturing representation of the current editor state.
  * Future exporters (SVG generator, toolpath planner) consume this document
  * instead of reading the Fabric canvas directly.
@@ -41,6 +58,9 @@ export interface ExecutionOperation {
 export interface ExecutionDocument {
 
     material: Material;
+
+    /** Null when the canvas has no workspace rect. */
+    bed: ExecutionBed | null;
 
     operations: ExecutionOperation[];
 

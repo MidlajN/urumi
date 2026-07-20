@@ -10,9 +10,8 @@ import type {
 export interface PlanOptions {
 
     /**
-     * Bed rect in canvas units, used as the SVG view box so machine
-     * coordinates are anchored to the bed. Falls back to the content
-     * bounds when omitted.
+     * Overrides the SVG view box (canvas units). Normally omitted — the
+     * document's bed anchors the machine coordinates.
      */
     viewBox?: SvgViewBox;
 

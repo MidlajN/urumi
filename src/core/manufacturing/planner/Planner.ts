@@ -54,13 +54,12 @@ export class Planner {
             this.machineProfile
         );
 
-        // dimensionUnit "px" makes the SVG self-describing: the planner
-        // converts px → mm at 96 dpi, matching the canvas unit exactly.
+        // The exporter anchors the SVG to the document's bed and stamps its
+        // physical size in mm, so the bake needs no extra scale context.
         const svg = this.exporter.export(
             document,
             {
                 viewBox: options.viewBox,
-                dimensionUnit: "px",
             }
         );
 

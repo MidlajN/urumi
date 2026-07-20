@@ -11,6 +11,7 @@ import type {
 } from "../job/resolver";
 
 import type {
+    ExecutionBed,
     ExecutionDocument,
     ExecutionObject,
     ExecutionOperation,
@@ -89,8 +90,36 @@ export function compileExecutionDocument(
         material:
             resolvedJob.material,
 
+        bed:
+            findBed(canvas),
+
         operations,
 
     };
 
+}
+
+function findBed(
+    canvas: Canvas
+): ExecutionBed | null {
+
+    const workspace = canvas
+        .getObjects()
+        .find(
+            (object) =>
+                object.name === "workspace"
+        );
+
+    if (!workspace) {
+        return null;
+    }
+
+    // The workspace rect is axis-aligned with a left/top origin, so its raw
+    // geometry is the exact bed rect (getBoundingRect would add the stroke).
+    return {
+        left: workspace.left,
+        top: workspace.top,
+        width: workspace.width,
+        height: workspace.height,
+    };
 }

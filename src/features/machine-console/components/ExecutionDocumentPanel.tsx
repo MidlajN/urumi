@@ -30,6 +30,9 @@ import {
     compileExecutionDocument
 } from "@/core/manufacturing/compiler";
 import {
+    getOperation
+} from "@/core/manufacturing/operations/registry";
+import {
     SvgExporter
 } from "@/core/manufacturing/exporters/svg";
 import {
@@ -66,8 +69,7 @@ export default function ExecutionDocumentPanel({
     summary: ManufacturingDocumentSummary;
 }) {
     const {
-        canvas,
-        workspace
+        canvas
     } = useCanvas();
 
     const job =
@@ -130,6 +132,7 @@ export default function ExecutionDocumentPanel({
     ] = useState<{
         result: PlannerResult | null;
         error: string | null;
+        bedMm: BedSizeMm | null;
     } | null>(
         null
     );
@@ -139,29 +142,23 @@ export default function ExecutionDocumentPanel({
             return;
         }
 
-        // Anchor machine coordinates to the bed when the workspace is known.
-        const bed = workspace
-            ?.getWorkspace()
-            .getBoundingRect();
+        const bedMm = executionDocument.bed
+            ? {
+                width: executionDocument.bed.width * MM_PER_PX,
+                height: executionDocument.bed.height * MM_PER_PX,
+            }
+            : null;
 
         try {
+            // The document's bed anchors machine coordinates.
             const result = new Planner().plan(
-                executionDocument,
-                bed
-                    ? {
-                        viewBox: {
-                            left: bed.left,
-                            top: bed.top,
-                            width: bed.width,
-                            height: bed.height,
-                        },
-                    }
-                    : {}
+                executionDocument
             );
 
             setPlanPreview({
                 result,
                 error: null,
+                bedMm,
             });
         } catch (error) {
             setPlanPreview({
@@ -170,6 +167,7 @@ export default function ExecutionDocumentPanel({
                 error instanceof Error
                     ? error.message
                     : "Planning failed",
+                bedMm,
             });
         }
     };
@@ -319,6 +317,9 @@ export default function ExecutionDocumentPanel({
                         error={
                             planPreview.error
                         }
+                        bedMm={
+                            planPreview.bedMm
+                        }
                         onClose={() =>
                             setPlanPreview(
                                 null
@@ -333,13 +334,23 @@ export default function ExecutionDocumentPanel({
 
 const SEGMENT_PREVIEW_LIMIT = 200;
 
+/** Canvas units are CSS px at 96 dpi. */
+const MM_PER_PX = 25.4 / 96;
+
+type BedSizeMm = {
+    width: number;
+    height: number;
+};
+
 function PlanPreviewModal({
     result,
     error,
+    bedMm,
     onClose
 }: {
     result: PlannerResult | null;
     error: string | null;
+    bedMm: BedSizeMm | null;
     onClose: () => void;
 }) {
     const totalSegments =
@@ -374,14 +385,40 @@ function PlanPreviewModal({
     const trajectory =
         useMemo(
             () =>
-                selectedBlock && result
-                    ? buildTrajectory(
-                        selectedBlock,
-                        result.config
+                result
+                    ? buildPlanTrajectory(
+                        result.plan.blocks,
+                        result.config,
+                        bedMm
                     )
                     : null,
             [
-                selectedBlock,
+                result,
+                bedMm
+            ]
+        );
+
+    const operationLegend =
+        useMemo(
+            () =>
+                result
+                    ? Array.from(
+                        new Set(
+                            result.plan.blocks.map(
+                                (block) =>
+                                    block.profile.name
+                            )
+                        )
+                    ).map(
+                        (operationId) => ({
+                            operationId,
+                            color: operationColor(
+                                operationId
+                            ),
+                        })
+                    )
+                    : [],
+            [
                 result
             ]
         );
@@ -551,9 +588,107 @@ function PlanPreviewModal({
                                 )}
                             </div>
 
+                            <div className="mb-1 mt-4 text-[10px] font-bold uppercase text-zinc-400">
+                                Trajectory
+                            </div>
+
+                            {trajectory ? (
+                                <div className="rounded-md border border-zinc-200 bg-white p-2">
+                                    <svg
+                                        viewBox={
+                                            trajectory.viewBox
+                                        }
+                                        className="h-52 w-full"
+                                    >
+                                        {trajectory.bed && (
+                                            <rect
+                                                x={0}
+                                                y={0}
+                                                width={
+                                                    trajectory.bed.width
+                                                }
+                                                height={
+                                                    trajectory.bed.height
+                                                }
+                                                fill="#fafafa"
+                                                stroke="#d4d4d8"
+                                                strokeWidth={1}
+                                                vectorEffect="non-scaling-stroke"
+                                            />
+                                        )}
+                                        {trajectory.paths.map(
+                                            (
+                                                path,
+                                                index
+                                            ) => (
+                                                <path
+                                                    key={
+                                                        index
+                                                    }
+                                                    d={
+                                                        path.d
+                                                    }
+                                                    fill="none"
+                                                    stroke={
+                                                        path.color
+                                                    }
+                                                    strokeWidth={1}
+                                                    vectorEffect="non-scaling-stroke"
+                                                    strokeDasharray={
+                                                        path.travel
+                                                            ? "5 4"
+                                                            : undefined
+                                                    }
+                                                />
+                                            )
+                                        )}
+                                    </svg>
+                                    <div className="mt-1 flex items-center gap-4 text-[10px] font-medium text-zinc-500">
+                                        {operationLegend.map(
+                                            (
+                                                entry
+                                            ) => (
+                                                <span
+                                                    key={
+                                                        entry.operationId
+                                                    }
+                                                    className="flex items-center gap-1.5 capitalize"
+                                                >
+                                                    <span
+                                                        className="h-0.5 w-4"
+                                                        style={{
+                                                            backgroundColor:
+                                                                entry.color
+                                                        }}
+                                                    />
+                                                    {entry.operationId}
+                                                </span>
+                                            )
+                                        )}
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="w-4 border-t-2 border-dashed border-zinc-400" />
+                                            Travel / lift
+                                        </span>
+                                        <span className="ml-auto">
+                                            {trajectory.bed
+                                                ? `bed ${Math.round(trajectory.bed.width)} × ${Math.round(trajectory.bed.height)} mm`
+                                                : "mm, machine frame"}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-dashed border-zinc-300 px-3 py-4 text-center text-[11px] font-medium text-zinc-500">
+                                    No XY motion in this plan.
+                                </div>
+                            )}
+
                             <div className="mb-1 mt-4 flex items-center justify-between">
                                 <span className="text-[10px] font-bold uppercase text-zinc-400">
-                                    Trajectory
+                                    Segments
+                                    {selectedBlock &&
+                                        selectedBlock.segments.length >
+                                            SEGMENT_PREVIEW_LIMIT &&
+                                        ` (first ${SEGMENT_PREVIEW_LIMIT} of ${selectedBlock.segments.length})`}
                                 </span>
                                 {blocks.length > 1 && (
                                     <select
@@ -588,71 +723,6 @@ function PlanPreviewModal({
                                         )}
                                     </select>
                                 )}
-                            </div>
-
-                            {trajectory ? (
-                                <div className="rounded-md border border-zinc-200 bg-white p-2">
-                                    <svg
-                                        viewBox={
-                                            trajectory.viewBox
-                                        }
-                                        className="h-52 w-full"
-                                    >
-                                        {trajectory.paths.map(
-                                            (
-                                                path,
-                                                index
-                                            ) => (
-                                                <path
-                                                    key={
-                                                        index
-                                                    }
-                                                    d={
-                                                        path.d
-                                                    }
-                                                    fill="none"
-                                                    stroke={
-                                                        path.kind === "cut"
-                                                            ? "#18181b"
-                                                            : "#f59e0b"
-                                                    }
-                                                    strokeWidth={1}
-                                                    vectorEffect="non-scaling-stroke"
-                                                    strokeDasharray={
-                                                        path.kind === "travel"
-                                                            ? "5 4"
-                                                            : undefined
-                                                    }
-                                                />
-                                            )
-                                        )}
-                                    </svg>
-                                    <div className="mt-1 flex items-center gap-4 text-[10px] font-medium text-zinc-500">
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="h-0.5 w-4 bg-zinc-900" />
-                                            Cut
-                                        </span>
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="w-4 border-t-2 border-dashed border-amber-500" />
-                                            Travel / lift
-                                        </span>
-                                        <span className="ml-auto">
-                                            mm, machine frame
-                                        </span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="rounded-md border border-dashed border-zinc-300 px-3 py-4 text-center text-[11px] font-medium text-zinc-500">
-                                    No XY motion in this block.
-                                </div>
-                            )}
-
-                            <div className="mb-1 mt-4 text-[10px] font-bold uppercase text-zinc-400">
-                                Segments
-                                {selectedBlock &&
-                                    selectedBlock.segments.length >
-                                        SEGMENT_PREVIEW_LIMIT &&
-                                    ` (first ${SEGMENT_PREVIEW_LIMIT} of ${selectedBlock.segments.length})`}
                             </div>
                             <div className="max-h-44 overflow-auto rounded-md border border-zinc-200">
                                 <table className="w-full font-mono text-[10px]">
@@ -744,18 +814,38 @@ function PlanPreviewModal({
 }
 
 type TrajectoryPath = {
-    kind: "cut" | "travel";
+    color: string;
+    travel: boolean;
     d: string;
 };
 
+const TRAVEL_COLOR = "#a1a1aa";
+
+function operationColor(
+    operationId: string
+): string {
+    return (
+        getOperation(operationId)?.color ??
+        "#18181b"
+    );
+}
+
 /**
- * Decodes a block's MicroSegments back into XY polylines (mm, machine frame,
- * Y flipped for screen display) by accumulating step deltas from startSteps.
+ * Decodes the plan's MicroSegments back into XY polylines per operation
+ * group (mm, machine frame) by accumulating step deltas from each block's
+ * startSteps. Cutting moves take the operation's color; travel moves are
+ * neutral. When the bed is known the geometry is mapped onto it (machine
+ * origin bottom-left → screen top-left), mirroring the exported SVG.
  */
-function buildTrajectory(
-    block: Block,
-    config: PipelineConfig
-): { paths: TrajectoryPath[]; viewBox: string } | null {
+function buildPlanTrajectory(
+    blocks: readonly Block[],
+    config: PipelineConfig,
+    bedMm: BedSizeMm | null
+): {
+    paths: TrajectoryPath[];
+    bed: BedSizeMm | null;
+    viewBox: string;
+} | null {
 
     const stepsX =
         config.machine.x.stepsPerUnit;
@@ -763,94 +853,121 @@ function buildTrajectory(
     const stepsY =
         config.machine.y.stepsPerUnit;
 
-    let x = block.startSteps.x;
-
-    let y = block.startSteps.y;
-
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    const toPoint = (): [number, number] => {
-        const pointX = x / stepsX;
+    const paths: TrajectoryPath[] = [];
 
-        const pointY = -y / stepsY;
+    for (const block of blocks) {
 
-        minX = Math.min(minX, pointX);
-        minY = Math.min(minY, pointY);
-        maxX = Math.max(maxX, pointX);
-        maxY = Math.max(maxY, pointY);
+        const color = operationColor(
+            block.profile.name
+        );
 
-        return [pointX, pointY];
-    };
+        let x = block.startSteps.x;
 
-    const polylines: {
-        kind: "cut" | "travel";
-        points: [number, number][];
-    }[] = [];
+        let y = block.startSteps.y;
 
-    let current:
-        | (typeof polylines)[number]
-        | null = null;
+        const toPoint = (): [number, number] => {
+            const pointX = x / stepsX;
 
-    for (const segment of block.segments) {
+            const machineY = y / stepsY;
 
-        if (!segment.dx && !segment.dy) {
-            continue;
+            const pointY = bedMm
+                ? bedMm.height - machineY
+                : -machineY;
+
+            minX = Math.min(minX, pointX);
+            minY = Math.min(minY, pointY);
+            maxX = Math.max(maxX, pointX);
+            maxY = Math.max(maxY, pointY);
+
+            return [pointX, pointY];
+        };
+
+        let current: {
+            travel: boolean;
+            points: [number, number][];
+        } | null = null;
+
+        const flush = () => {
+            if (!current || current.points.length < 2) {
+                return;
+            }
+
+            paths.push({
+                color: current.travel
+                    ? TRAVEL_COLOR
+                    : color,
+                travel: current.travel,
+                d:
+                    "M " +
+                    current.points
+                        .map(
+                            ([pointX, pointY]) =>
+                                `${pointX.toFixed(2)} ${pointY.toFixed(2)}`
+                        )
+                        .join(" L "),
+            });
+        };
+
+        for (const segment of block.segments) {
+
+            if (!segment.dx && !segment.dy) {
+                continue;
+            }
+
+            const travel = Boolean(
+                segment.flags & (MICRO_JOG | MICRO_LIFT)
+            );
+
+            if (!current || current.travel !== travel) {
+                flush();
+
+                current = {
+                    travel,
+                    points: [toPoint()],
+                };
+            }
+
+            x += segment.dx;
+            y += segment.dy;
+
+            current.points.push(toPoint());
         }
 
-        const kind =
-            segment.flags & (MICRO_JOG | MICRO_LIFT)
-                ? "travel"
-                : "cut";
-
-        if (!current || current.kind !== kind) {
-            current = {
-                kind,
-                points: [toPoint()],
-            };
-
-            polylines.push(current);
-        }
-
-        x += segment.dx;
-        y += segment.dy;
-
-        current.points.push(toPoint());
+        flush();
     }
 
-    if (polylines.length === 0) {
+    if (paths.length === 0) {
         return null;
     }
 
-    const paths = polylines.map(
-        (polyline) => ({
-            kind: polyline.kind,
-            d:
-                "M " +
-                polyline.points
-                    .map(
-                        ([pointX, pointY]) =>
-                            `${pointX.toFixed(2)} ${pointY.toFixed(2)}`
-                    )
-                    .join(" L "),
-        })
-    );
+    const margin = 5;
 
-    const margin = 3;
-
-    const viewBox = [
-        minX - margin,
-        minY - margin,
-        maxX - minX + margin * 2,
-        maxY - minY + margin * 2,
-    ]
+    const viewBox = (
+        bedMm
+            ? [
+                -margin,
+                -margin,
+                bedMm.width + margin * 2,
+                bedMm.height + margin * 2,
+            ]
+            : [
+                minX - margin,
+                minY - margin,
+                maxX - minX + margin * 2,
+                maxY - minY + margin * 2,
+            ]
+    )
         .map((value) => value.toFixed(2))
         .join(" ");
 
     return {
         paths,
+        bed: bedMm,
         viewBox,
     };
 }
