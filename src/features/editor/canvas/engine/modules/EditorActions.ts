@@ -749,9 +749,12 @@ export class EditorActions {
         const objects = this.canvas.getObjects().filter(obj => {
             const name = obj.get('name');
 
-            return ( 
+            return (
                 name !== 'workspace' &&
-                name !== 'grid'
+                name !== 'grid' &&
+                // Non-selectable objects (off-bed objects in manufacturing
+                // mode, the reference layer) never join a select-all.
+                obj.selectable !== false
             )
         });
 

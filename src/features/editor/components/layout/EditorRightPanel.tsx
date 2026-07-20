@@ -15,6 +15,11 @@ import { useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import { useWorkspaceStore } from "@/stores/workspace.store";
 import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
+import {
+    markObjectsOffBed,
+    validateBedPlacement
+} from "../../utils/bedValidation";
+import BedValidationModal from "../BedValidationModal";
 
 
 const fontOptions = [
@@ -544,6 +549,54 @@ function ToolSpecificControls() {
 export default function EditorRightPanel() {
     const { setMode } = useWorkspaceStore();
 
+    const {
+        canvas,
+        workspace
+    } = useCanvas();
+
+    const [
+        partialObjects,
+        setPartialObjects
+    ] = useState<FabricObject[] | null>(
+        null
+    );
+
+    const proceedToManufacturing = () => {
+        if (canvas && workspace) {
+            const result = validateBedPlacement(
+                canvas,
+                workspace.getWorkspace()
+            );
+
+            if (result.partial.length > 0) {
+                setPartialObjects(
+                    result.partial
+                );
+                return;
+            }
+        }
+
+        setMode(
+            "manufacturing"
+        );
+    };
+
+    const ignorePartialObjects = () => {
+        if (partialObjects) {
+            markObjectsOffBed(
+                partialObjects
+            );
+        }
+
+        setPartialObjects(
+            null
+        );
+
+        setMode(
+            "manufacturing"
+        );
+    };
+
     return (
         <aside
             className="
@@ -560,10 +613,8 @@ export default function EditorRightPanel() {
             <div className="border-b border-zinc-200 bg-white p-4">
                 <button
                     type="button"
-                    onClick={() =>
-                        setMode(
-                            "manufacturing"
-                        )
+                    onClick={
+                        proceedToManufacturing
                     }
                     className="group flex w-full items-center gap-3 rounded-md bg-zinc-950 px-3.5 py-3.5 text-left text-white shadow-sm transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
                 >
@@ -592,6 +643,22 @@ export default function EditorRightPanel() {
 
                 <ToolSpecificControls />
             </div>
+
+            {partialObjects && (
+                <BedValidationModal
+                    count={
+                        partialObjects.length
+                    }
+                    onIgnore={
+                        ignorePartialObjects
+                    }
+                    onCancel={() =>
+                        setPartialObjects(
+                            null
+                        )
+                    }
+                />
+            )}
         </aside>
     );
 }

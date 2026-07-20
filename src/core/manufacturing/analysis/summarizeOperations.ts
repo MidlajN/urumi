@@ -113,6 +113,12 @@ export function summarizeOperations(
 function shouldIgnoreObject(
     object: FabricObject
 ) {
+    // Bed-placement validation marks off-bed objects; they are not part of
+    // the manufacturing document.
+    if (object.onBed === false) {
+        return true;
+    }
+
     return Boolean(
         object.name &&
         IGNORED_OBJECT_NAMES.has(

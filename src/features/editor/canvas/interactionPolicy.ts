@@ -25,8 +25,12 @@ type ObjectInteractionState = {
     lockSkewingX: FabricObject["lockSkewingX"];
     lockSkewingY: FabricObject["lockSkewingY"];
     hoverCursor: FabricObject["hoverCursor"];
+    opacity: FabricObject["opacity"];
     editable?: boolean;
 };
+
+/** Display opacity for objects excluded from manufacturing (off the bed). */
+const OFF_BED_OPACITY = 0.25;
 
 type CanvasInteractionState = {
     mode: WorkspaceMode;
@@ -100,6 +104,15 @@ export function applyCanvasInteractionPolicy(
                 applyReadOnlyObjectState(
                     object
                 );
+
+                if (
+                    object.onBed ===
+                    false
+                ) {
+                    applyOffBedObjectState(
+                        object
+                    );
+                }
                 return;
             }
 
@@ -223,9 +236,33 @@ function storeObjectState(
                     object as EditableFabricObject
                 ).editable,
             hoverCursor:
-                object.hoverCursor
+                object.hoverCursor,
+            opacity:
+                object.opacity
         }
     );
+}
+
+/**
+ * Off-bed objects are excluded from the manufacturing document: not
+ * selectable, not interactive, and dimmed so the exclusion is visible.
+ * Their original state is restored on returning to design mode.
+ */
+function applyOffBedObjectState(
+    object: FabricObject
+) {
+    object.set({
+        selectable:
+            false,
+        evented:
+            false,
+        hasBorders:
+            false,
+        opacity:
+            OFF_BED_OPACITY,
+        hoverCursor:
+            "default"
+    });
 }
 
 function applyReadOnlyObjectState(
