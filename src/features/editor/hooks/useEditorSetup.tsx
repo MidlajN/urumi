@@ -130,7 +130,10 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
 
         const isEditableText = (obj: FabricObject): obj is IText => obj.type === "i-text";
 
-        const finalizeCreatedObject = (object: FabricObject) => {
+        const finalizeCreatedObject = (
+            object: FabricObject,
+            selectable = true
+        ) => {
             const metadata =
                 ensureManufacturingMetadata(
                     object
@@ -143,7 +146,7 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                 true;
 
             object.set({
-                selectable: true,
+                selectable,
             });
 
             object.setCoords();
@@ -1246,7 +1249,10 @@ export const useEditorSetup = ({ canvas, toolRef }: Props) => {
                 if (isDot) {
                     canvas.remove(object);
                 } else {
-                    finalizeCreatedObject(object);
+                    // Stay unselectable while the shape tool is active so the
+                    // next drag draws a new shape instead of grabbing this one;
+                    // resetCanvas re-enables selection on tool exit.
+                    finalizeCreatedObject(object, false);
                 }
 
                 mouseDown = false;

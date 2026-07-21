@@ -10,6 +10,7 @@ type Props = {
     hasMenu?: boolean;
     label?: string;
     onClick?: () => void;
+    onNotchClick?: () => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
 };
@@ -21,6 +22,7 @@ export default function ToolButton({
     hasMenu,
     label,
     onClick,
+    onNotchClick,
     onMouseEnter,
     onMouseLeave
 }: Props) {
@@ -73,23 +75,46 @@ export default function ToolButton({
             <Icon size={18} />
             {hasMenu && (
                 <span
-                    aria-hidden="true"
-                    className={clsx(
-                        `
+                    role="button"
+                    aria-label={`${
+                        label ??
+                        tool
+                    } options`}
+                    onClick={(e) => {
+
+                        e.stopPropagation();
+
+                        onNotchClick?.();
+                    }}
+                    className="
                         absolute
-                        right-1
-                        bottom-1
-                        w-0
-                        h-0
-                        border-l-[7px]
-                        border-b-[7px]
-                        border-l-transparent
-                        `,
-                        active
-                            ? "border-r-white/80"
-                            : "border-t-zinc-400"
-                    )}
-                />
+                        right-0
+                        bottom-0
+                        w-4
+                        h-4
+                        flex
+                        items-end
+                        justify-end
+                        p-1
+                        cursor-pointer
+                    "
+                >
+                    <span
+                        aria-hidden="true"
+                        className={clsx(
+                            `
+                            w-0
+                            h-0
+                            border-l-[7px]
+                            border-b-[7px]
+                            border-l-transparent
+                            `,
+                            active
+                                ? "border-r-white/80"
+                                : "border-t-zinc-400"
+                        )}
+                    />
+                </span>
             )}
         </button>
     );

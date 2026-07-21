@@ -59,7 +59,15 @@ export function canModifyCanvas(
 
 export function applyCanvasInteractionPolicy(
     canvas: Canvas,
-    mode: WorkspaceMode
+    mode: WorkspaceMode,
+    options?: {
+        /**
+         * Drawing tools own canvas.selection / isDrawingMode while
+         * active; re-applying the policy mid-draw (object:added fires
+         * for every created object) must not clobber them.
+         */
+        preserveToolState?: boolean;
+    }
 ) {
     const state =
         getCanvasState(
@@ -69,10 +77,14 @@ export function applyCanvasInteractionPolicy(
     state.mode =
         mode;
 
-    canvas.selection =
-        true;
-    canvas.isDrawingMode =
-        false;
+    if (
+        !options?.preserveToolState
+    ) {
+        canvas.selection =
+            true;
+        canvas.isDrawingMode =
+            false;
+    }
 
     canvas.getObjects().forEach(
         (

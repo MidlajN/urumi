@@ -42,7 +42,15 @@ export function useCanvasInteractionPolicy(
         const applyPolicy = () =>
             applyCanvasInteractionPolicy(
                 canvas,
-                mode
+                mode,
+                {
+                    preserveToolState:
+                        mode ===
+                            "design" &&
+                        useEditorStore.getState()
+                            .activeTool !==
+                            "select"
+                }
             );
 
         applyPolicy();

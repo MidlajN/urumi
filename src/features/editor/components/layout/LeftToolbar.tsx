@@ -306,6 +306,11 @@ export default function LeftToolbar() {
                     closeMenu
                 }
                 onClick={() =>
+                    handleToolSelect(
+                        "pen"
+                    )
+                }
+                onNotchClick={() =>
                     toggleMenu(
                         "pen"
                     )
@@ -450,6 +455,11 @@ export default function LeftToolbar() {
                     closeMenu
                 }
                 onClick={() =>
+                    handleToolSelect(
+                        "shape"
+                    )
+                }
+                onNotchClick={() =>
                     toggleMenu(
                         "shape"
                     )
