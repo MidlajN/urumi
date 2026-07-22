@@ -1,6 +1,7 @@
 import {
     ArrowRight,
-    Factory
+    Factory,
+    MousePointer2
 } from "lucide-react";
 import {
     useEffect,
@@ -10,11 +11,14 @@ import {
 
 import type { ReactNode } from "react";
 import type { FabricObject } from "fabric";
+import { ActiveSelection } from "fabric";
 
 import { useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import { useWorkspaceStore } from "@/stores/workspace.store";
 import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
+import { useManufacturingSummary } from "@/features/machine-console/hooks/useManufacturingSummary";
+import OperationPreview from "@/features/machine-console/components/OperationPreview";
 import {
     markObjectsOffBed,
     validateBedPlacement
@@ -130,16 +134,10 @@ function PanelSection({
     );
 }
 
-function OperationSwatches() {
+function useSelectionOperationColors() {
     const {
         canvas
     } = useCanvas();
-
-    const {
-        operationColors,
-        strokeColor,
-        setStrokeColor
-    } = useEditorStore();
 
     const [
         selectedColors,
@@ -230,6 +228,28 @@ function OperationSwatches() {
         canvas
     ]);
 
+    return {
+        selectedColors,
+        setSelectedColors
+    };
+}
+
+function OperationSwatches() {
+    const {
+        canvas
+    } = useCanvas();
+
+    const {
+        operationColors,
+        strokeColor,
+        setStrokeColor
+    } = useEditorStore();
+
+    const {
+        selectedColors,
+        setSelectedColors
+    } = useSelectionOperationColors();
+
     const selectedOperationColor =
         useMemo(
             () =>
@@ -241,37 +261,6 @@ function OperationSwatches() {
                 selectedColors
             ]
         );
-
-    const selectedOperationLabel =
-        useMemo(() => {
-            if (
-                selectedColors.length ===
-                0
-            ) {
-                return "Default for new objects";
-            }
-
-            if (
-                selectedColors.length >
-                1
-            ) {
-                return "Mixed selection";
-            }
-
-            return (
-                operationColors.find(
-                    (
-                        item
-                    ) =>
-                        item.color.toLowerCase() ===
-                        selectedColors[0]
-                )?.label ??
-                "Custom operation"
-            );
-        }, [
-            selectedColors,
-            operationColors
-        ]);
 
     const applyOperation =
         (
@@ -344,13 +333,6 @@ function OperationSwatches() {
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-[12px] font-semibold text-zinc-600">
-                <span>Selected operation</span>
-                <span className="text-zinc-900">
-                    {selectedOperationLabel}
-                </span>
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
                 {operationColors.map((item) => {
                     const activeColor =
@@ -401,6 +383,161 @@ function OperationSwatches() {
                 })}
             </div>
         </div>
+    );
+}
+
+function OperationObjectsSection() {
+    const {
+        canvas
+    } = useCanvas();
+
+    const {
+        summary
+    } = useManufacturingSummary();
+
+    const {
+        setTool,
+        exitNodeEditMode
+    } = useEditorStore();
+
+    const selectOperationObjects = (
+        objects: FabricObject[]
+    ) => {
+        if (
+            !canvas ||
+            objects.length ===
+            0
+        ) {
+            return;
+        }
+
+        exitNodeEditMode();
+        setTool(
+            "select"
+        );
+
+        canvas.discardActiveObject();
+
+        if (
+            objects.length ===
+            1
+        ) {
+            canvas.setActiveObject(
+                objects[0]
+            );
+        } else {
+            const selection =
+                new ActiveSelection(
+                    objects,
+                    {
+                        canvas
+                    }
+                );
+
+            canvas.setActiveObject(
+                selection
+            );
+        }
+
+        canvas.requestRenderAll();
+    };
+
+    if (
+        summary.operations.length ===
+        0
+    ) {
+        return (
+            <PanelSection title="Objects">
+                <div className="rounded-md bg-zinc-50 px-3 py-3 text-[12px] font-medium text-zinc-500">
+                    No objects on the canvas yet.
+                </div>
+            </PanelSection>
+        );
+    }
+
+    return (
+        <PanelSection title="Objects">
+            <div className="space-y-2">
+                {summary.operations.map((item) => (
+                    <button
+                        key={
+                            item.operationId
+                        }
+                        type="button"
+                        title={`Select all ${item.operation.label} objects`}
+                        onClick={() =>
+                            selectOperationObjects(
+                                item.objects
+                            )
+                        }
+                        className="
+                            group
+                            relative
+                            w-full
+                            overflow-hidden
+                            rounded-md
+                            border
+                            border-zinc-200
+                            bg-white
+                            text-left
+                            shadow-sm
+                            transition
+                            hover:border-zinc-300
+                            hover:shadow-[0_8px_24px_rgba(24,24,27,0.08)]
+                        "
+                    >
+                        <span
+                            className="absolute inset-x-0 top-0 h-0.5"
+                            style={{
+                                backgroundColor:
+                                    item.operation.color
+                            }}
+                        />
+
+                        <span className="flex items-center gap-3 p-3">
+                            <OperationPreview
+                                summary={
+                                    item
+                                }
+                            />
+
+                            <span className="min-w-0 flex-1">
+                                <span className="flex items-center gap-2">
+                                    <span
+                                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-zinc-50"
+                                        style={{
+                                            backgroundColor:
+                                                item.operation.color
+                                        }}
+                                    />
+                                    <span className="truncate text-[13px] font-semibold text-zinc-950">
+                                        {item.operation.label}
+                                    </span>
+                                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600">
+                                        {item.objectCount}
+                                    </span>
+                                </span>
+
+                                <span className="mt-1 block text-[11px] font-medium text-zinc-500">
+                                    {item.objectCount === 1
+                                        ? "1 object"
+                                        : `${item.objectCount} objects`}
+                                </span>
+
+                                <span className="mt-0.5 block text-[11px] font-medium text-zinc-400 transition group-hover:text-zinc-600">
+                                    Click to select all
+                                </span>
+                            </span>
+
+                            <MousePointer2
+                                size={14}
+                                className="shrink-0 text-zinc-300 transition group-hover:text-zinc-500"
+                            />
+                        </span>
+                    </button>
+                ))}
+            </div>
+        </PanelSection>
     );
 }
 
@@ -537,13 +674,7 @@ function ToolSpecificControls() {
         return <TextControls />;
     }
 
-    return (
-        <PanelSection title="Tool">
-            <div className="rounded-md bg-zinc-50 px-3 py-2 text-[13px] font-medium capitalize text-zinc-700">
-                {activeTool}
-            </div>
-        </PanelSection>
-    );
+    return null;
 }
 
 export default function EditorRightPanel() {
@@ -640,6 +771,8 @@ export default function EditorRightPanel() {
                 <PanelSection title="Operation color">
                     <OperationSwatches />
                 </PanelSection>
+
+                <OperationObjectsSection />
 
                 <ToolSpecificControls />
             </div>

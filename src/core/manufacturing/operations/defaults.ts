@@ -22,12 +22,5 @@ export const DEFAULT_OPERATIONS: readonly OperationDefinition[] = [
         color: "#f97316",
         enabled: true,
     },
-    
-    {
-        id: "guide",
-        label: "Guide",
-        color: "#94a3b8",
-        enabled: true,
-    },
 
 ] as const;
