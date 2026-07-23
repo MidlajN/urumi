@@ -1,696 +1,69 @@
-import {
-    ArrowRight,
-    Factory,
-    MousePointer2
-} from "lucide-react";
-import {
-    useEffect,
-    useMemo,
-    useState
-} from "react";
-
-import type { ReactNode } from "react";
+import { ArrowRight, Factory } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { FabricObject } from "fabric";
-import { ActiveSelection } from "fabric";
 
-import { useEditorStore } from "../../store/editor.store";
 import { useCanvas } from "../../canvas/CanvasProvider";
 import { useWorkspaceStore } from "@/stores/workspace.store";
-import { ensureManufacturingMetadata } from "@/core/manufacturing/metadata/objectMetadata";
-import { useManufacturingSummary } from "@/features/machine-console/hooks/useManufacturingSummary";
-import OperationPreview from "@/features/machine-console/components/OperationPreview";
 import {
     markObjectsOffBed,
     validateBedPlacement
 } from "../../utils/bedValidation";
 import BedValidationModal from "../BedValidationModal";
+import { PanelSection, getOperationTargets } from "./right-panel/shared";
+import OperationSwatches from "./right-panel/OperationSwatches";
+import OperationObjectsSection from "./right-panel/OperationObjectsSection";
+import SelectionPanel from "./right-panel/SelectionPanel";
+import ToolSpecificControls from "./right-panel/ToolControls";
 
+/** Live list of the currently selected leaf objects. */
+function useActiveSelectionTargets() {
+    const { canvas } = useCanvas();
 
-const fontOptions = [
-    "BobaMilky",
-    "Arial",
-    "Inter",
-    "Helvetica"
-];
-
-type OperationObject =
-    FabricObject & {
-        getObjects?: () => FabricObject[];
-    };
-
-function getOperationTargets(
-    object: FabricObject | null | undefined
-): FabricObject[] {
-    if (!object) {
-        return [];
-    }
-
-    const maybeCollection =
-        object as OperationObject;
-
-    if (
-        typeof maybeCollection.getObjects ===
-        "function"
-    ) {
-        return maybeCollection
-            .getObjects()
-            .flatMap(
-                getOperationTargets
-            );
-    }
-
-    return [
-        object
-    ];
-}
-
-function isTextObject(
-    object: FabricObject
-) {
-    return [
-        "i-text",
-        "text",
-        "textbox"
-    ].includes(
-        object.type
-    );
-}
-
-function getObjectOperationColor(
-    object: FabricObject
-) {
-    const value =
-        isTextObject(
-            object
-        )
-            ? object.get(
-                "fill"
-            )
-            : object.get(
-                "stroke"
-            );
-
-    return typeof value ===
-        "string"
-        ? value
-        : null;
-}
-
-function applyOperationColor(
-    object: FabricObject,
-    color: string
-) {
-    object.set(
-        isTextObject(
-            object
-        )
-            ? {
-                fill:
-                    color
-            }
-            : {
-                stroke:
-                    color
-            }
-    );
-
-    object.setCoords();
-}
-
-function PanelSection({
-    title,
-    children
-}: {
-    title: string;
-    children: ReactNode;
-}) {
-    return (
-        <section className="border-b border-zinc-200/80 px-4 py-4">
-            <h3 className="mb-3 text-[11px] font-bold uppercase text-zinc-500">
-                {title}
-            </h3>
-            {children}
-        </section>
-    );
-}
-
-function useSelectionOperationColors() {
-    const {
-        canvas
-    } = useCanvas();
-
-    const [
-        selectedColors,
-        setSelectedColors
-    ] = useState<string[]>(
-        []
-    );
+    const [targets, setTargets] = useState<FabricObject[]>([]);
 
     useEffect(() => {
         if (!canvas) {
-            setSelectedColors(
-                []
-            );
+            setTargets([]);
             return;
         }
 
-        const syncSelection =
-            () => {
-                const colors =
-                    getOperationTargets(
-                        canvas.getActiveObject()
-                    )
-                        .map(
-                            getObjectOperationColor
-                        )
-                        .filter(
-                            (
-                                color
-                            ): color is string =>
-                                Boolean(
-                                    color
-                                )
-                        )
-                        .map(
-                            (
-                                color
-                            ) =>
-                                color.toLowerCase()
-                        );
+        const sync = () => {
+            setTargets(
+                getOperationTargets(canvas.getActiveObject())
+            );
+        };
 
-                setSelectedColors(
-                    Array.from(
-                        new Set(
-                            colors
-                        )
-                    )
-                );
-            };
+        sync();
 
-        syncSelection();
-
-        canvas.on(
+        const events = [
             "selection:created",
-            syncSelection
-        );
-        canvas.on(
             "selection:updated",
-            syncSelection
-        );
-        canvas.on(
             "selection:cleared",
-            syncSelection
-        );
-        canvas.on(
             "object:modified",
-            syncSelection
-        );
+            "object:removed"
+        ] as const;
+
+        events.forEach((event) => canvas.on(event, sync));
 
         return () => {
-            canvas.off(
-                "selection:created",
-                syncSelection
-            );
-            canvas.off(
-                "selection:updated",
-                syncSelection
-            );
-            canvas.off(
-                "selection:cleared",
-                syncSelection
-            );
-            canvas.off(
-                "object:modified",
-                syncSelection
-            );
+            events.forEach((event) => canvas.off(event, sync));
         };
-    }, [
-        canvas
-    ]);
+    }, [canvas]);
 
-    return {
-        selectedColors,
-        setSelectedColors
-    };
-}
-
-function OperationSwatches() {
-    const {
-        canvas
-    } = useCanvas();
-
-    const {
-        operationColors,
-        strokeColor,
-        setStrokeColor
-    } = useEditorStore();
-
-    const {
-        selectedColors,
-        setSelectedColors
-    } = useSelectionOperationColors();
-
-    const selectedOperationColor =
-        useMemo(
-            () =>
-                selectedColors.length ===
-                1
-                    ? selectedColors[0]
-                    : null,
-            [
-                selectedColors
-            ]
-        );
-
-    const applyOperation =
-        (
-            color: string,
-            operationId: string
-        ) => {
-            setStrokeColor(
-                color
-            );
-
-            if (!canvas) {
-                return;
-            }
-
-            const activeObject =
-                canvas.getActiveObject();
-
-            const targets =
-                getOperationTargets(
-                    activeObject
-                );
-
-            if (
-                targets.length ===
-                0
-            ) {
-                return;
-            }
-
-            targets.forEach(
-                (
-                    object
-                ) => {
-                    applyOperationColor(
-                        object,
-                        color
-                    );
-
-                    const metadata =
-                        ensureManufacturingMetadata(
-                            object
-                        );
-
-                    metadata.operationId =
-                        operationId;
-
-                    metadata.enabled =
-                        true;
-                }
-            );
-
-            if (
-                activeObject
-            ) {
-                activeObject.setCoords();
-                canvas.fire(
-                    "object:modified",
-                    {
-                        target:
-                            activeObject
-                    }
-                );
-            }
-
-            canvas.requestRenderAll();
-            setSelectedColors([
-                color.toLowerCase()
-            ]);
-        };
-
-    return (
-        <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-                {operationColors.map((item) => {
-                    const activeColor =
-                        selectedOperationColor ??
-                        strokeColor.toLowerCase();
-
-                    const active =
-                        activeColor ===
-                        item.color.toLowerCase();
-
-                    return (
-                        <button
-                            key={item.id}
-                            type="button"
-                            onClick={() =>
-                                applyOperation(
-                                    item.color,
-                                    item.id
-                                )
-                            }
-                            className={`
-                                flex
-                                h-9
-                                items-center
-                                gap-2
-                                rounded-md
-                                border
-                                px-2
-                                text-[13px]
-                                font-medium
-                                ${
-                                    active
-                                        ? "border-zinc-900 bg-zinc-100 text-zinc-950"
-                                        : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                                }
-                            `}
-                        >
-                            <span
-                                className="h-4 w-4 rounded-full border border-black/10"
-                                style={{
-                                    backgroundColor:
-                                        item.color
-                                }}
-                            />
-                            {item.label}
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-function OperationObjectsSection() {
-    const {
-        canvas
-    } = useCanvas();
-
-    const {
-        summary
-    } = useManufacturingSummary();
-
-    const {
-        setTool,
-        exitNodeEditMode
-    } = useEditorStore();
-
-    const selectOperationObjects = (
-        objects: FabricObject[]
-    ) => {
-        if (
-            !canvas ||
-            objects.length ===
-            0
-        ) {
-            return;
-        }
-
-        exitNodeEditMode();
-        setTool(
-            "select"
-        );
-
-        canvas.discardActiveObject();
-
-        if (
-            objects.length ===
-            1
-        ) {
-            canvas.setActiveObject(
-                objects[0]
-            );
-        } else {
-            const selection =
-                new ActiveSelection(
-                    objects,
-                    {
-                        canvas
-                    }
-                );
-
-            canvas.setActiveObject(
-                selection
-            );
-        }
-
-        canvas.requestRenderAll();
-    };
-
-    if (
-        summary.operations.length ===
-        0
-    ) {
-        return (
-            <PanelSection title="Objects">
-                <div className="rounded-md bg-zinc-50 px-3 py-3 text-[12px] font-medium text-zinc-500">
-                    No objects on the canvas yet.
-                </div>
-            </PanelSection>
-        );
-    }
-
-    return (
-        <PanelSection title="Objects">
-            <div className="space-y-2">
-                {summary.operations.map((item) => (
-                    <button
-                        key={
-                            item.operationId
-                        }
-                        type="button"
-                        title={`Select all ${item.operation.label} objects`}
-                        onClick={() =>
-                            selectOperationObjects(
-                                item.objects
-                            )
-                        }
-                        className="
-                            group
-                            relative
-                            w-full
-                            overflow-hidden
-                            rounded-md
-                            border
-                            border-zinc-200
-                            bg-white
-                            text-left
-                            shadow-sm
-                            transition
-                            hover:border-zinc-300
-                            hover:shadow-[0_8px_24px_rgba(24,24,27,0.08)]
-                        "
-                    >
-                        <span
-                            className="absolute inset-x-0 top-0 h-0.5"
-                            style={{
-                                backgroundColor:
-                                    item.operation.color
-                            }}
-                        />
-
-                        <span className="flex items-center gap-3 p-3">
-                            <OperationPreview
-                                summary={
-                                    item
-                                }
-                            />
-
-                            <span className="min-w-0 flex-1">
-                                <span className="flex items-center gap-2">
-                                    <span
-                                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-zinc-50"
-                                        style={{
-                                            backgroundColor:
-                                                item.operation.color
-                                        }}
-                                    />
-                                    <span className="truncate text-[13px] font-semibold text-zinc-950">
-                                        {item.operation.label}
-                                    </span>
-                                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600">
-                                        {item.objectCount}
-                                    </span>
-                                </span>
-
-                                <span className="mt-1 block text-[11px] font-medium text-zinc-500">
-                                    {item.objectCount === 1
-                                        ? "1 object"
-                                        : `${item.objectCount} objects`}
-                                </span>
-
-                                <span className="mt-0.5 block text-[11px] font-medium text-zinc-400 transition group-hover:text-zinc-600">
-                                    Click to select all
-                                </span>
-                            </span>
-
-                            <MousePointer2
-                                size={14}
-                                className="shrink-0 text-zinc-300 transition group-hover:text-zinc-500"
-                            />
-                        </span>
-                    </button>
-                ))}
-            </div>
-        </PanelSection>
-    );
-}
-
-function SelectControls() {
-    return null;
-}
-
-function ShapeControls() {
-    const {
-        selectedShape
-    } = useEditorStore();
-
-    return (
-        <>
-            <PanelSection title="Shape">
-                <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-[13px] font-medium text-zinc-800">
-                    <span>Current shape</span>
-                    <span className="capitalize">
-                        {selectedShape}
-                    </span>
-                </div>
-            </PanelSection>
-
-        </>
-    );
-}
-
-function TextControls() {
-    const {
-        fontFamily,
-        fontSize,
-        setFontFamily,
-        setFontSize
-    } = useEditorStore();
-
-    return (
-        <PanelSection title="Text">
-            <div className="space-y-3">
-                <label className="block">
-                    <span className="mb-1 block text-[12px] font-semibold text-zinc-500">
-                        Font
-                    </span>
-                    <select
-                        value={fontFamily}
-                        onChange={(event) =>
-                            setFontFamily(
-                                event.target.value
-                            )
-                        }
-                        className="
-                            h-9
-                            w-full
-                            rounded-md
-                            border
-                            border-zinc-200
-                            bg-white
-                            px-2
-                            text-[13px]
-                            font-medium
-                            text-zinc-800
-                            outline-none
-                        "
-                    >
-                        {fontOptions.map((font) => (
-                            <option
-                                key={font}
-                                value={font}
-                            >
-                                {font}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-
-                <label className="block">
-                    <span className="mb-1 block text-[12px] font-semibold text-zinc-500">
-                        Font size
-                    </span>
-                    <input
-                        type="number"
-                        min={8}
-                        max={160}
-                        step={1}
-                        value={fontSize}
-                        onChange={(event) =>
-                            setFontSize(
-                                Number(
-                                    event.target.value
-                                )
-                            )
-                        }
-                        className="
-                            h-9
-                            w-full
-                            rounded-md
-                            border
-                            border-zinc-200
-                            px-2
-                            text-[13px]
-                            font-medium
-                            text-zinc-800
-                            outline-none
-                        "
-                    />
-                </label>
-            </div>
-        </PanelSection>
-    );
-}
-
-function ToolSpecificControls() {
-    const {
-        activeTool
-    } = useEditorStore();
-
-    if (
-        activeTool ===
-        "select"
-    ) {
-        return <SelectControls />;
-    }
-
-    if (
-        activeTool ===
-        "shape"
-    ) {
-        return <ShapeControls />;
-    }
-
-    if (
-        activeTool ===
-        "text"
-    ) {
-        return <TextControls />;
-    }
-
-    return null;
+    return targets;
 }
 
 export default function EditorRightPanel() {
     const { setMode } = useWorkspaceStore();
 
-    const {
-        canvas,
-        workspace
-    } = useCanvas();
+    const { canvas, workspace } = useCanvas();
+
+    const targets = useActiveSelectionTargets();
 
     const [
         partialObjects,
         setPartialObjects
-    ] = useState<FabricObject[] | null>(
-        null
-    );
+    ] = useState<FabricObject[] | null>(null);
 
     const proceedToManufacturing = () => {
         if (canvas && workspace) {
@@ -700,32 +73,22 @@ export default function EditorRightPanel() {
             );
 
             if (result.partial.length > 0) {
-                setPartialObjects(
-                    result.partial
-                );
+                setPartialObjects(result.partial);
                 return;
             }
         }
 
-        setMode(
-            "manufacturing"
-        );
+        setMode("manufacturing");
     };
 
     const ignorePartialObjects = () => {
         if (partialObjects) {
-            markObjectsOffBed(
-                partialObjects
-            );
+            markObjectsOffBed(partialObjects);
         }
 
-        setPartialObjects(
-            null
-        );
+        setPartialObjects(null);
 
-        setMode(
-            "manufacturing"
-        );
+        setMode("manufacturing");
     };
 
     return (
@@ -744,9 +107,7 @@ export default function EditorRightPanel() {
             <div className="border-b border-zinc-200 bg-white p-4">
                 <button
                     type="button"
-                    onClick={
-                        proceedToManufacturing
-                    }
+                    onClick={proceedToManufacturing}
                     className="group flex w-full items-center gap-3 rounded-md bg-zinc-950 px-3.5 py-3.5 text-left text-white shadow-sm transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
                 >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/10">
@@ -768,28 +129,26 @@ export default function EditorRightPanel() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                <PanelSection title="Operation color">
-                    <OperationSwatches />
-                </PanelSection>
+                {targets.length > 0 ? (
+                    <SelectionPanel targets={targets} />
+                ) : (
+                    <>
+                        <PanelSection title="Operation color">
+                            <OperationSwatches />
+                        </PanelSection>
 
-                <OperationObjectsSection />
+                        <OperationObjectsSection />
 
-                <ToolSpecificControls />
+                        <ToolSpecificControls />
+                    </>
+                )}
             </div>
 
             {partialObjects && (
                 <BedValidationModal
-                    count={
-                        partialObjects.length
-                    }
-                    onIgnore={
-                        ignorePartialObjects
-                    }
-                    onCancel={() =>
-                        setPartialObjects(
-                            null
-                        )
-                    }
+                    count={partialObjects.length}
+                    onIgnore={ignorePartialObjects}
+                    onCancel={() => setPartialObjects(null)}
                 />
             )}
         </aside>

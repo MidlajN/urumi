@@ -14,11 +14,11 @@ import {
 import {
     ArrowLeft,
     Boxes,
-    Factory,
+    FileCode2,
     Layers3
 } from "lucide-react";
 
-import ExecutionDocumentPanel from "./ExecutionDocumentPanel";
+import ExecutionDocumentModal from "./ExecutionDocumentPanel";
 import MaterialSection from "./MaterialSection";
 import MaterialToolSettingsModal from "./MaterialToolSettingsModal";
 import OperationCard from "./OperationCard";
@@ -83,6 +83,13 @@ export default function ManufacturingSidebar() {
     const [
         materialSettingsOpen,
         setMaterialSettingsOpen
+    ] = useState(
+        false
+    );
+
+    const [
+        executionDocumentOpen,
+        setExecutionDocumentOpen
     ] = useState(
         false
     );
@@ -245,34 +252,40 @@ export default function ManufacturingSidebar() {
                         </div>
                     </div>
 
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
-                        <Factory size={17} />
-                    </span>
+                    <button
+                        type="button"
+                        aria-label="View execution document"
+                        title="View execution document"
+                        onClick={() =>
+                            setExecutionDocumentOpen(
+                                true
+                            )
+                        }
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white transition hover:bg-zinc-800"
+                    >
+                        <FileCode2 size={17} />
+                    </button>
                 </div>
 
-                <div className="grid grid-cols-2 border-t border-zinc-100 bg-zinc-50/80">
-                    <div className="flex items-center gap-2.5 border-r border-zinc-200 px-4 py-3">
-                        <Boxes size={15} className="text-zinc-400" />
-                        <div>
-                            <div className="text-[14px] font-semibold text-zinc-900">
-                                {summary.totalObjectCount}
-                            </div>
-                            <div className="text-[9px] font-bold uppercase text-zinc-400">
-                                Objects
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2.5 px-4 py-3">
-                        <Layers3 size={15} className="text-zinc-400" />
-                        <div>
-                            <div className="text-[14px] font-semibold text-zinc-900">
-                                {summary.operations.length}
-                            </div>
-                            <div className="text-[9px] font-bold uppercase text-zinc-400">
-                                Operations
-                            </div>
-                        </div>
-                    </div>
+                <div className="flex items-center gap-4 border-t border-zinc-100 bg-zinc-50/60 px-4 py-2.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700">
+                        <Boxes size={13} className="text-zinc-400" />
+                        {summary.totalObjectCount}
+                        <span className="font-medium text-zinc-400">
+                            {summary.totalObjectCount === 1
+                                ? "object"
+                                : "objects"}
+                        </span>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700">
+                        <Layers3 size={13} className="text-zinc-400" />
+                        {summary.operations.length}
+                        <span className="font-medium text-zinc-400">
+                            {summary.operations.length === 1
+                                ? "operation"
+                                : "operations"}
+                        </span>
+                    </span>
                 </div>
             </header>
 
@@ -314,7 +327,7 @@ export default function ManufacturingSidebar() {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="divide-y divide-zinc-100 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
                             {summary.operations.map(
                                 (
                                     operation
@@ -334,15 +347,6 @@ export default function ManufacturingSidebar() {
                             )}
                         </div>
                     )}
-                </div>
-
-                {/* TEMPORARY: Execution Document inspection panel (remove with ExecutionDocumentPanel.tsx). */}
-                <div className="mt-5">
-                    <ExecutionDocumentPanel
-                        summary={
-                            summary
-                        }
-                    />
                 </div>
             </div>
 
@@ -427,6 +431,20 @@ export default function ManufacturingSidebar() {
                 }
                 onClose={() =>
                     setMaterialSettingsOpen(
+                        false
+                    )
+                }
+            />
+
+            <ExecutionDocumentModal
+                summary={
+                    summary
+                }
+                open={
+                    executionDocumentOpen
+                }
+                onClose={() =>
+                    setExecutionDocumentOpen(
                         false
                     )
                 }

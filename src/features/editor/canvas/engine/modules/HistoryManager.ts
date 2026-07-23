@@ -101,6 +101,8 @@ export class HistoryManager {
             this.undoStack.length - 1
         ];
 
+        const preserved = this.collectNonSerialized();
+
         this.canvas
             .loadFromJSON(prevState)
             .then(() => {
@@ -123,6 +125,8 @@ export class HistoryManager {
                         }
                     }
                 );
+
+                this.restoreNonSerialized(preserved);
 
                 this.isUndoRedo = false;
 
@@ -148,6 +152,8 @@ export class HistoryManager {
 
         this.undoStack.push(state);
 
+        const preserved = this.collectNonSerialized();
+
         this.canvas.loadFromJSON(state).then(() => {
 
             this.canvas.getObjects().forEach(
@@ -172,9 +178,42 @@ export class HistoryManager {
                 }
             );
 
+            this.restoreNonSerialized(preserved);
+
             this.isUndoRedo = false;
 
             this.canvas.renderAll();
+        });
+    }
+
+    /**
+     * Objects flagged excludeFromExport (e.g. the reference photo layer)
+     * are absent from history snapshots, so loadFromJSON would silently
+     * drop them. They are carried across restores by hand instead.
+     */
+    private collectNonSerialized() {
+        return this.canvas
+            .getObjects()
+            .map((object, index) => ({
+                object,
+                index
+            }))
+            .filter(({ object }) => object.excludeFromExport);
+    }
+
+    private restoreNonSerialized(
+        preserved: ReturnType<HistoryManager["collectNonSerialized"]>
+    ): void {
+        preserved.forEach(({ object, index }) => {
+            this.canvas.add(object);
+
+            this.canvas.moveObjectTo(
+                object,
+                Math.min(
+                    index,
+                    this.canvas.getObjects().length - 1
+                )
+            );
         });
     }
 

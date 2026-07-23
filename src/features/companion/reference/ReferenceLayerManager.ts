@@ -189,6 +189,9 @@ export class ReferenceLayerManager {
     private configureImage(image: FabricImage) {
         image.set({
             name: "reference-layer",
+            // The multi-MB photo data URL must never be serialized: it would
+            // bloat every undo snapshot and blow the localStorage quota.
+            excludeFromExport: true,
             selectable: false,
             evented: false,
             hasControls: false,

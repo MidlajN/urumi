@@ -753,6 +753,10 @@ export class Workspace {
         );
     }
 
+    deleteSelection(): void {
+        this.editor.delete();
+    }
+
     destroy(): void {
         this.viewport.destroy();
 

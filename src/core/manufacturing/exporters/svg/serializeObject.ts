@@ -36,18 +36,31 @@ type PathDataBuilder = (
     object: FabricObject
 ) => string | null;
 
-export function serializeObject(
+/**
+ * Path data for the object in absolute scene coordinates (transforms baked
+ * in). Also used by the editor's convert-to-path action, so a converted
+ * object round-trips identically through the exporter.
+ */
+export function buildScenePathData(
     object: FabricObject
 ): string | null {
-
     const builder =
         PATH_BUILDERS[
             object.type.toLowerCase()
         ];
 
-    const d = builder
+    return builder
         ? builder(object)
         : null;
+}
+
+export function serializeObject(
+    object: FabricObject
+): string | null {
+
+    const d = buildScenePathData(
+        object
+    );
 
     if (!d) {
         return null;
@@ -92,6 +105,25 @@ function rectPathData(
     );
 
     return `M ${formatPoint(corners[0])} L ${formatPoint(corners[1])} L ${formatPoint(corners[2])} L ${formatPoint(corners[3])} Z`;
+}
+
+function trianglePathData(
+    object: FabricObject
+): string {
+    const halfWidth = object.width / 2;
+
+    const halfHeight = object.height / 2;
+
+    const points = transformAll(
+        [
+            { x: 0, y: -halfHeight },
+            { x: halfWidth, y: halfHeight },
+            { x: -halfWidth, y: halfHeight },
+        ],
+        object.calcTransformMatrix()
+    );
+
+    return `M ${formatPoint(points[0])} L ${formatPoint(points[1])} L ${formatPoint(points[2])} Z`;
 }
 
 function circlePathData(
@@ -167,6 +199,7 @@ function polylinePathData(
 const PATH_BUILDERS: Record<string, PathDataBuilder> = {
     path: pathData,
     rect: rectPathData,
+    triangle: trianglePathData,
     circle: circlePathData,
     ellipse: fabricEllipsePathData,
     line: linePathData,

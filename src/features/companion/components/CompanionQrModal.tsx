@@ -6,6 +6,7 @@ import {
     Route,
     Scan,
     TriangleAlert,
+    Upload,
     X
 } from "lucide-react";
 import {
@@ -36,7 +37,7 @@ const RECEIVE_STEPS = [
     {
         key: "received",
         label: "Image received",
-        detail: "Photo transferred from the companion app",
+        detail: "Capture handed to the editor",
         icon: ImageDown
     },
     {
@@ -415,6 +416,36 @@ export default function CompanionQrModal({
                                 </div>
                             )}
                         </div>
+
+                        <div className="mt-3 flex items-center gap-3">
+                            <span className="h-px flex-1 bg-zinc-200" />
+                            <span className="text-[10px] font-bold uppercase text-zinc-400">
+                                or
+                            </span>
+                            <span className="h-px flex-1 bg-zinc-200" />
+                        </div>
+
+                        <label className="mt-3 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-zinc-950 text-[13px] font-semibold text-white transition hover:bg-zinc-800">
+                            <Upload size={14} />
+                            Upload image from files
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) => {
+                                    const file =
+                                        event.target.files?.[0];
+
+                                    event.target.value = "";
+
+                                    if (file) {
+                                        void manager?.importReferenceFile(
+                                            file
+                                        );
+                                    }
+                                }}
+                            />
+                        </label>
 
                         <div className="mt-4 rounded-md bg-zinc-50 px-3 py-2">
                             <div className="flex items-center justify-between text-[12px] font-semibold">
