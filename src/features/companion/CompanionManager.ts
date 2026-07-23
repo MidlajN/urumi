@@ -3,7 +3,7 @@ import type { Canvas, Rect } from "fabric";
 import { PeerTransport } from "./transport/PeerTransport";
 import type { CompanionTransport } from "./transport/CompanionTransport";
 import { ReferenceLayerManager } from "./reference/ReferenceLayerManager";
-import { vectorizeReferenceImage } from "./reference/vectorizeReference";
+import { flattenReferenceImage } from "./reference/vectorizeReference";
 import { compressImage } from "@/companion/utils/imageCompression";
 import { MACHINE_CONFIG } from "@/features/editor/canvas/config";
 import {
@@ -11,10 +11,19 @@ import {
   type CompanionInboundMessage,
   type CompanionProgress,
   type CompanionReferencePayload,
+  type CompanionSessionStatus,
   type CompanionState,
   type CompanionStateListener,
 } from "./types";
-import type { VectorizedReference } from "./reference/vectorizeReference";
+import type {
+  FlattenedReference,
+  VectorizedReference,
+} from "./reference/vectorizeReference";
+
+type PendingReview = {
+    flattened: FlattenedReference;
+    payload: CompanionReferencePayload;
+};
 
 export class CompanionManager {
     private transport: CompanionTransport;
@@ -24,6 +33,8 @@ export class CompanionManager {
     private listeners = new Set<CompanionStateListener>();
 
     private state: CompanionState = createInitialCompanionState();
+
+    private pendingReview: PendingReview | null = null;
 
     constructor(
         canvas: Canvas,
@@ -91,6 +102,8 @@ export class CompanionManager {
     }
 
     closeReferenceSession() {
+        this.cancelReferenceReview();
+
         this.transport.closeSession();
 
         this.setState({
@@ -134,6 +147,7 @@ export class CompanionManager {
     }
 
     destroy() {
+        this.pendingReview = null;
         this.transport.closeSession();
         this.referenceLayer.destroy();
         this.listeners.clear();
@@ -255,6 +269,13 @@ export class CompanionManager {
         };
     }
 
+    /**
+     * Flattens the received capture (ArUco warp), then pauses in the
+     * "reviewing" state so the user can lasso detection areas on the flat,
+     * distortion-free view. confirmReferenceSelection / cancelReferenceReview
+     * continue the flow. If the frame can't be detected the raw photo loads
+     * as the overlay, skipping the selection step.
+     */
     private async processReferencePayload(
         payload: CompanionReferencePayload,
         options: { acknowledge: boolean },
@@ -272,14 +293,84 @@ export class CompanionManager {
         try {
             payload = await this.ensureLandscapePayload(payload);
 
+            // Ack as soon as the capture is safely in the editor — the
+            // review step can take arbitrarily long and the phone only
+            // waits a few seconds for confirmation.
+            if (options.acknowledge) {
+                this.transport.send({
+                    type: "received",
+                });
+            }
+
+            let flattened: FlattenedReference | null = null;
+
+            try {
+                flattened = await flattenReferenceImage(payload.image);
+            } catch (flattenError) {
+                console.warn(
+                    "Reference flatten failed",
+                    flattenError,
+                );
+
+                this.setProgress({
+                    warning:
+                        "Bed frame not detected — showing the photo only.",
+                });
+            }
+
+            if (!flattened) {
+                await this.placeReference(null, payload);
+
+                return;
+            }
+
+            this.pendingReview = {
+                flattened,
+                payload,
+            };
+
+            this.setState({
+                status: "reviewing",
+                review: {
+                    image: flattened.image,
+                    width: flattened.width,
+                    height: flattened.height,
+                },
+            });
+        } catch (error) {
+            this.failReference(error);
+        }
+    }
+
+    /**
+     * Continues the paused pipeline with the user's detection-area mask
+     * (white = selected, in flattened-image pixels; null = whole bed).
+     */
+    async confirmReferenceSelection(mask: HTMLCanvasElement | null) {
+        const pending = this.pendingReview;
+
+        if (!pending) {
+            return;
+        }
+
+        this.pendingReview = null;
+
+        this.setState({
+            status: "receiving",
+            review: null,
+        });
+
+        this.setProgress({
+            stage: "vectorizing",
+        });
+
+        try {
             // Vectorization failure is non-fatal — the raw photo still
             // loads as the overlay.
             let vectorized: VectorizedReference | null = null;
 
             try {
-                vectorized = await vectorizeReferenceImage(
-                    payload.image,
-                );
+                vectorized = await pending.flattened.vectorize(mask);
             } catch (vectorizationError) {
                 console.warn(
                     "Reference vectorization failed",
@@ -297,66 +388,102 @@ export class CompanionManager {
                     await this.rotateVectorizedToLandscape(vectorized);
             }
 
-            this.setProgress({
-                stage: "placing",
-            });
-
-            // Prefer the pipeline's perspective-corrected image and its
-            // measured physical size over the raw payload.
-            const overlayPayload: CompanionReferencePayload = vectorized
-                ? {
-                    image: vectorized.image,
-                    physical_width:
-                        vectorized.meta.physical_width ??
-                        payload.physical_width,
-                    physical_height:
-                        vectorized.meta.physical_height ??
-                        payload.physical_height,
-                    dots_per_mm:
-                        vectorized.meta.dots_per_mm ??
-                        payload.dots_per_mm,
-                }
-                : payload;
-
-            await this.referenceLayer.loadImage(overlayPayload);
-
-            let pathCount = 0;
-
-            if (vectorized) {
-                const objects = await this.referenceLayer.addVectorizedSvg(
-                    vectorized.svg,
-                );
-
-                pathCount = objects.length;
-            }
-
-            if (options.acknowledge) {
-                this.transport.send({
-                    type: "received",
-                });
-            }
-
-            this.syncReferenceState({
-                status: "received",
-            });
-
-            this.setProgress({
-                stage: "done",
-                pathCount: vectorized ? pathCount : null,
-            });
+            await this.placeReference(vectorized, pending.payload);
         } catch (error) {
-            this.setProgress({
-                stage: "idle",
-            });
-
-            this.setState({
-                status: "error",
-                error:
-                error instanceof Error
-                    ? error.message
-                    : "Unable to load reference image",
-            });
+            this.failReference(error);
         }
+    }
+
+    /** Discards the paused capture and returns to the pre-receive state. */
+    cancelReferenceReview() {
+        const pending = this.pendingReview;
+
+        if (!pending) {
+            return;
+        }
+
+        this.pendingReview = null;
+
+        const returnStatus: CompanionSessionStatus = this.state.connected
+            ? "connected"
+            : this.state.peerId
+                ? "waiting"
+                : this.state.reference.exists
+                    ? "received"
+                    : "idle";
+
+        this.setState({
+            status: returnStatus,
+            review: null,
+        });
+
+        this.setProgress({
+            stage: "idle",
+            warning: null,
+            pathCount: null,
+        });
+    }
+
+    private async placeReference(
+        vectorized: VectorizedReference | null,
+        payload: CompanionReferencePayload,
+    ) {
+        this.setProgress({
+            stage: "placing",
+        });
+
+        // Prefer the pipeline's perspective-corrected image and its
+        // measured physical size over the raw payload.
+        const overlayPayload: CompanionReferencePayload = vectorized
+            ? {
+                image: vectorized.image,
+                physical_width:
+                    vectorized.meta.physical_width ??
+                    payload.physical_width,
+                physical_height:
+                    vectorized.meta.physical_height ??
+                    payload.physical_height,
+                dots_per_mm:
+                    vectorized.meta.dots_per_mm ??
+                    payload.dots_per_mm,
+            }
+            : payload;
+
+        await this.referenceLayer.loadImage(overlayPayload);
+
+        let pathCount = 0;
+
+        if (vectorized) {
+            const objects = await this.referenceLayer.addVectorizedSvg(
+                vectorized.svg,
+            );
+
+            pathCount = objects.length;
+        }
+
+        this.syncReferenceState({
+            status: "received",
+        });
+
+        this.setProgress({
+            stage: "done",
+            pathCount: vectorized ? pathCount : null,
+        });
+    }
+
+    private failReference(error: unknown) {
+        this.setProgress({
+            stage: "idle",
+        });
+
+        this.setState({
+            status: "error",
+            review: null,
+            error:
+            error instanceof Error
+                ? error.message
+                : "Unable to load reference image",
+        });
     }
 
   private setProgress(patch: Partial<CompanionProgress>) {

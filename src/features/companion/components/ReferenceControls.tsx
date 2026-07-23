@@ -2,10 +2,12 @@ import {
     Eye,
     EyeOff,
     RefreshCcw,
+    SwitchCamera,
     Trash2
 } from "lucide-react";
 import {
     useEffect,
+    useRef,
     useState
 } from "react";
 
@@ -32,6 +34,17 @@ export default function ReferenceControls({
         initialState
     );
 
+    const [
+        open,
+        setOpen
+    ] = useState(
+        false
+    );
+
+    const containerRef =
+        useRef<HTMLDivElement | null>(
+            null
+        );
 
     useEffect(() => {
         if (
@@ -47,16 +60,92 @@ export default function ReferenceControls({
         manager
     ]);
 
+    const exists = state.reference.exists;
+
+    // A freshly added reference always starts with the panel closed.
+    useEffect(() => {
+        if (!exists) {
+            setOpen(false);
+        }
+    }, [
+        exists
+    ]);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (
+                containerRef.current?.contains(
+                    event.target as Node
+                )
+            ) {
+                return;
+            }
+
+            setOpen(false);
+        };
+
+        window.addEventListener(
+            "pointerdown",
+            handlePointerDown
+        );
+
+        return () => {
+            window.removeEventListener(
+                "pointerdown",
+                handlePointerDown
+            );
+        };
+    }, [
+        open
+    ]);
+
     if (
         !manager ||
-        !state.reference.exists
+        !exists
     ) {
         return null;
     }
 
     return (
-        <>
-            <div className="pointer-events-auto absolute right-4 top-4 z-40 flex flex-col items-end gap-2">
+        <div
+            ref={containerRef}
+            className="pointer-events-auto absolute right-4 top-8 z-40 flex flex-col items-end gap-2"
+        >
+            <button
+                type="button"
+                aria-label="Reference layer controls"
+                title="Reference layer"
+                aria-expanded={open}
+                onClick={() =>
+                    setOpen(
+                        (value) => !value
+                    )
+                }
+                className={`
+                    flex
+                    px-4 py-2
+                    items-center
+                    justify-center
+                    rounded-md
+                    border
+                    shadow-md
+                    backdrop-blur
+                    transition
+                    ${
+                        open
+                            ? "border-zinc-900 bg-zinc-950 text-white"
+                            : "border-zinc-200 bg-white/95 text-zinc-600 hover:border-zinc-300 hover:text-zinc-950"
+                    }
+                `}
+            >
+                <SwitchCamera size={18} />
+            </button>
+
+            {open && (
                 <div
                     className="
                         w-56
@@ -154,7 +243,7 @@ export default function ReferenceControls({
                         </button>
                     </div>
                 </div>
-            </div>
-        </>
+            )}
+        </div>
     );
 }

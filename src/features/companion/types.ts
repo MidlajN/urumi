@@ -4,8 +4,20 @@ export type CompanionSessionStatus =
     | "waiting"
     | "connected"
     | "receiving"
+    | "reviewing"
     | "received"
     | "error";
+
+/** ArUco-corrected capture awaiting the user's detection-area selection. */
+export type CompanionReviewImage = {
+    /** Corrected bed image as a data URL. */
+    image: string;
+
+    /** Corrected image size in pixels — the lasso coordinate space. */
+    width: number;
+
+    height: number;
+};
 
 /**
  * Messages received from the companion app.
@@ -72,6 +84,7 @@ export type CompanionState = {
     connected: boolean;
     error: string | null;
     progress: CompanionProgress;
+    review: CompanionReviewImage | null;
     reference: {
         exists: boolean;
         visible: boolean;
@@ -90,6 +103,7 @@ export function createInitialCompanionState(): CompanionState {
             warning: null,
             pathCount: null,
         },
+        review: null,
         reference: {
             exists: false,
             visible: true,

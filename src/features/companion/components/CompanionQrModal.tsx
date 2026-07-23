@@ -28,6 +28,7 @@ import {
     createInitialCompanionState,
     type CompanionProgress
 } from "../types";
+import ReferenceReviewStage from "./ReferenceReviewStage";
 
 const initialState = createInitialCompanionState();
 
@@ -213,6 +214,11 @@ export default function CompanionQrModal({
         state.status ===
         "receiving";
 
+    const reviewing =
+        state.status ===
+            "reviewing" &&
+        state.review !== null;
+
     const statusLabel =
         state.status === "creating"
             ? "Creating session"
@@ -253,9 +259,9 @@ export default function CompanionQrModal({
             <div
                 className={`
                     w-full
-                    max-w-sm
+                    ${reviewing ? "max-w-xl" : "max-w-sm"}
                     max-h-[calc(100vh-32px)]
-                    overflow-hidden
+                    overflow-y-auto
                     rounded-xl
                     border
                     border-zinc-200
@@ -266,18 +272,22 @@ export default function CompanionQrModal({
                 <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
                     <div>
                         <h2 className="text-[15px] font-semibold text-zinc-950">
-                            {receiving
-                                ? "Processing Reference"
-                                : received
-                                    ? "Reference Received"
-                                    : "Capture Bed Reference"}
+                            {reviewing
+                                ? "Select Detection Areas"
+                                : receiving
+                                    ? "Processing Reference"
+                                    : received
+                                        ? "Reference Received"
+                                        : "Capture Bed Reference"}
                         </h2>
                         <p className="mt-1 text-[12px] font-medium text-zinc-500">
-                            {receiving
-                                ? "Turning the capture into a bed overlay"
-                                : received
-                                    ? "Reference layer is ready"
-                                    : "Scan from the companion app"}
+                            {reviewing
+                                ? "Lasso the drawings on the flattened bed"
+                                : receiving
+                                    ? "Turning the capture into a bed overlay"
+                                    : received
+                                        ? "Reference layer is ready"
+                                        : "Scan from the companion app"}
                         </p>
                     </div>
 
@@ -303,7 +313,19 @@ export default function CompanionQrModal({
                     </button>
                 </div>
 
-                {receiving ? (
+                {reviewing && state.review ? (
+                    <ReferenceReviewStage
+                        review={state.review}
+                        onConfirm={(mask) => {
+                            void manager?.confirmReferenceSelection(
+                                mask
+                            );
+                        }}
+                        onCancel={() =>
+                            manager?.cancelReferenceReview()
+                        }
+                    />
+                ) : receiving ? (
                     <div className="p-4">
                         <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
                             {RECEIVE_STEPS.map((step, index) => (

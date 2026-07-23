@@ -22,7 +22,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "svg-skeletonization": "^1.0.0",
+    "svg-skeletonization": "^1.0.1",
     "tailwindcss": "^4.3.0",
     "urumi-toolpath": "^0.1.0",
     "vitest": "^4.1.9",
