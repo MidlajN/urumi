@@ -136,6 +136,15 @@ export class CommandQueue {
         )
     }
 
+    /** True when nothing is queued or waiting for an acknowledgement. */
+    isDrained() {
+        return (
+            this.state === 'idle' &&
+            this.queue.length === 0 &&
+            this.currentCommand === null
+        )
+    }
+
     private startTimeout(command: QueuedCommand) {
         this.timeoutId = setTimeout(() => {
             this.setState(
