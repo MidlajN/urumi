@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import type { RuntimeState } from '@/core/machine/runtime/MachineRuntime'
+
 export type ConnectionState =
     | 'disconnected'
     | 'connecting'
@@ -31,6 +33,8 @@ interface MachineStore {
 
     queueState: QueueState
 
+    runtimeState: RuntimeState
+
     currentCommand: string | null
 
     logs: RuntimeLog[]
@@ -41,6 +45,10 @@ interface MachineStore {
 
     setQueueState: (
         state: QueueState
+    ) => void
+
+    setRuntimeState: (
+        state: RuntimeState
     ) => void
 
     setCurrentCommand: (
@@ -59,6 +67,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
 
     queueState: 'idle',
 
+    runtimeState: 'disconnected',
+
     currentCommand: null,
 
     logs: [],
@@ -71,6 +81,11 @@ export const useMachineStore = create<MachineStore>((set) => ({
     setQueueState:
         (queueState) => set({
             queueState,
+        }),
+
+    setRuntimeState:
+        (runtimeState) => set({
+            runtimeState,
         }),
 
     setCurrentCommand:

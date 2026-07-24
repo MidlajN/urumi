@@ -15,7 +15,7 @@ export const BUILTIN_MATERIALS: readonly Material[] = [
 
         operations: {
 
-            cut: {
+            knife: {
 
                 enabled: true,
 

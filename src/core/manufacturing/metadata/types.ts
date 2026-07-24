@@ -11,6 +11,6 @@ export interface ManufacturingMetadata {
 }
 
 export const DEFAULT_MANUFACTURING_METADATA: ManufacturingMetadata = {
-    operationId: "cut",
+    operationId: "knife",
     enabled: true,
 };

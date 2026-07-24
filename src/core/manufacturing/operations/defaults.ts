@@ -3,8 +3,8 @@ import type { OperationDefinition } from "./types";
 export const DEFAULT_OPERATIONS: readonly OperationDefinition[] = [
 
     {
-        id: "cut",
-        label: "Cut",
+        id: "knife",
+        label: "Knife",
         color: "#111827",
         enabled: true,
     },

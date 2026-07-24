@@ -296,7 +296,7 @@ export default function AnimatedSelect({
                     gap-2
                     rounded-md
                     border
-                    px-3
+                    px-2
                     text-left
                     outline-none
                     transition
@@ -307,12 +307,12 @@ export default function AnimatedSelect({
                     ${
                         compact
                             ? "h-9"
-                            : "h-11"
+                            : "h-10"
                     }
                     ${
                         dark
                             ? "border-white/15 bg-white/10 text-white hover:bg-white/15"
-                            : "border-zinc-200 bg-zinc-50 text-zinc-900 hover:border-zinc-300 hover:bg-white"
+                            : "border-zinc-100 bg-zinc-50 text-zinc-900 hover:border-zinc-200 hover:bg-white"
                     }
                 `}
             >
@@ -330,8 +330,8 @@ export default function AnimatedSelect({
                     <span
                         className={`block truncate font-semibold ${
                             compact
-                                ? "text-[11px]"
-                                : "text-[13px]"
+                                ? "text-[9px]"
+                                : "text-[11px]"
                         } ${
                             selectedOption
                                 ? ""
@@ -340,13 +340,12 @@ export default function AnimatedSelect({
                                     : "text-zinc-500"
                         }`}
                     >
-                        {selectedOption?.label ??
-                            placeholder}
+                        {selectedOption?.label ?? placeholder}
                     </span>
                     {!compact &&
                         selectedOption?.description && (
                             <span
-                                className={`mt-0.5 block truncate text-[10px] font-medium ${
+                                className={`block truncate text-[9px] font-medium ${
                                     dark
                                         ? "text-zinc-400"
                                         : "text-zinc-500"

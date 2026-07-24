@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import ExecutionDocumentModal from "./ExecutionDocumentPanel";
+import MachineControls from "./MachineControls";
 import MaterialSection from "./MaterialSection";
 import MaterialToolSettingsModal from "./MaterialToolSettingsModal";
 import OperationCard from "./OperationCard";
@@ -291,14 +292,19 @@ export default function ManufacturingSidebar() {
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 <MaterialSection
-                    onOpenSettings={() =>
+                    onConfigureMaterial={() =>
+                        setMaterialSettingsOpen(
+                            true
+                        )
+                    }
+                    onConfigureTools={() =>
                         setMaterialSettingsOpen(
                             true
                         )
                     }
                 />
 
-                <div className="mt-5">
+                <div className="mt-6">
                     <div className="mb-2.5 flex items-center justify-between">
                         <div>
                             <div className="text-[11px] font-bold uppercase text-zinc-500">
@@ -348,6 +354,8 @@ export default function ManufacturingSidebar() {
                         </div>
                     )}
                 </div>
+
+                <MachineControls />
             </div>
 
             {createPortal(

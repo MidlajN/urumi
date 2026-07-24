@@ -1,4 +1,4 @@
-import { ChevronRight, Settings2 } from "lucide-react";
+import { ChevronRight, Settings2, Wrench } from "lucide-react";
 
 import { listMaterials } from "@/core/manufacturing/materials/registry";
 import { useManufacturingStore } from "@/stores/manufacturing.store";
@@ -15,9 +15,11 @@ const materialOptions = materials.map((material) => ({
 }));
 
 export default function MaterialSection({
-    onOpenSettings
+    onConfigureMaterial,
+    onConfigureTools
 }: {
-    onOpenSettings: () => void;
+    onConfigureMaterial: () => void;
+    onConfigureTools: () => void;
 }) {
     const selectedMaterialId = useManufacturingStore(
         (state) => state.selectedMaterialId
@@ -57,22 +59,34 @@ export default function MaterialSection({
             </div>
 
             <div className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
-                <div className="p-2">
-                    <AnimatedSelect
-                        ariaLabel="Material preset"
-                        value={selectedMaterialId ?? ""}
-                        options={materialOptions}
-                        placeholder="Select material"
-                        onChange={setMaterial}
-                    />
+                <div className="flex items-center gap-2 p-2">
+                    <div className="min-w-0 flex-1">
+                        <AnimatedSelect
+                            ariaLabel="Material preset"
+                            value={selectedMaterialId ?? ""}
+                            options={materialOptions}
+                            placeholder="Select material"
+                            onChange={setMaterial}
+                        />
+                    </div>
+
+                    <button
+                        type="button"
+                        aria-label="Configure material"
+                        title="Configure material"
+                        onClick={onConfigureMaterial}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900"
+                    >
+                        <Settings2 size={15} />
+                    </button>
                 </div>
 
                 <button
                     type="button"
-                    onClick={onOpenSettings}
+                    onClick={onConfigureTools}
                     className="group flex w-full items-center gap-2.5 border-t border-zinc-100 px-3 py-2.5 text-left transition hover:bg-zinc-50"
                 >
-                    <Settings2
+                    <Wrench
                         size={14}
                         className="shrink-0 text-zinc-400"
                     />
